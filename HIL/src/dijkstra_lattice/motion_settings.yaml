@@ -1,0 +1,62 @@
+extends: base_settings.yaml
+# With --gnss-mode periodic, both lattice models coast for at most 10 m or
+# 30 s and require a fresh GNSS-fused pose before accepting each waypoint.
+gnss_segments:
+  segment_m: 10.0
+  acquire_s: 1.0
+  min_fixes: 3
+  max_coast_s: 30.0
+  sigma_limit: 0.95
+  drift_sigma_per_s: 0.03
+  drift_sigma_per_m: 0.05
+  route_unavailable_grace_s: 10.0
+waypoint_gnss_verification: true
+waypoint_gnss_timeout_s: 30.0
+target_gnss_radius_m: 2.0
+# Offline primitive generation uses the selected robot's navigation.yaml.
+lattice_headings: 16
+lattice_cruise_speed: 0.7
+lattice_min_curve_speed: 0.35
+lattice_lateral_acceleration: 0.6
+lattice_max_curvature: 1.5
+lattice_sample_spacing: 0.08
+lattice_primitive_lengths: [1.0, 1.5, 2.0, 2.5, 3.0]
+lattice_horizon_m: 5.0
+lattice_min_goal_progress_m: 0.2
+lattice_window_half_m: 8.0
+lattice_comfort_distance_m: 0.75
+lattice_comfort_weight: 2.0
+lattice_turn_cost: 0.8
+planning_margin: 1.0
+planning_resolution: 0.5
+# Abandon an unproductive local subgoal promptly and try the next 360-degree
+# candidate.  The old 12 s budget produced visible stationary waits.
+lattice_search_budget_s: 4.0
+planning_time_limit: 0.35
+lattice_tracking_deviation_m: 0.65
+lattice_endpoint_tolerance_m: 0.35
+lattice_heading_tolerance_rad: 0.30
+lattice_rotation_tolerance_rad: 0.12
+lattice_tracking_lookahead_m: 0.8
+lattice_max_tracking_heading_error_rad: 0.55
+lattice_primitive_timeout_s: 10.0
+lattice_duration_multiplier: 3.0
+lattice_handoff_lookahead_m: 1.0
+# In GNSS-denied (SLAM/EKF) operation, discard stale navigation state after
+# three completed or failed recovery attempts and plan again from current pose.
+recovery_round_robin_retries: 3
+# Reverse only far enough to recover the approximately 0.65 m turning space.
+# The shared collision checks still stop this maneuver when rear space is not
+# physically clear.
+backup_distance: 0.8
+backup_timeout: 10.0
+# Sparse open terrain gave scan matching enough freedom to rotate map->odom
+# gradually while wheel odometry still matched simulator truth. Keep the
+# GNSS-denied lattice baseline in the odometry frame and continue accumulating
+# its LiDAR occupancy map without scan-matching pose corrections.
+slam_use_scan_matching: false
+slam_do_loop_closing: false
+
+lattice_terminal_activation_m: 1.5
+lattice_terminal_speed: 0.35
+lattice_terminal_heading_tolerance_rad: 0.25
