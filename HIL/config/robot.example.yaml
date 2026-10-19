@@ -1,0 +1,31 @@
+# Copy this file and replace every value with the receiving robot's measured
+# configuration. The planner has no dependency on a particular terrain.
+base_frame: base_link
+map_frame: map
+odom_frame: odom
+odom_topic: /odom
+localization_mode: slam
+
+# Rectangle shown only as an example: [front/back, left/right] metres from base_link.
+footprint:
+  - [-0.50, -0.35]
+  - [0.50, -0.35]
+  - [0.50, 0.35]
+  - [-0.50, 0.35]
+footprint_padding: 0.05
+
+# Begin below the verified physical limits and raise them only after testing.
+max_linear_speed: 0.30
+max_angular_speed: 0.30
+linear_acceleration: 0.25
+angular_acceleration: 0.40
+reverse_speed: 0.10
+command_timeout: 0.60
+
+# Existing robot/terrain stack topics used by this package.
+scan_topic: /scan
+map_topic: /map
+
+# Planner output stays isolated until the watchdog approves it.
+planner_command_topic: /hil/planner_cmd_vel
+hardware_command_topic: /cmd_vel

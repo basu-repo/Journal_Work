@@ -1,0 +1,86 @@
+# Shared navigation settings; robot profile and terrain are selected by the runner.
+startup_delay: 30.0
+gnss_segments:
+  segment_m: 3.0
+  acquire_s: 1.0
+  min_fixes: 3
+  max_coast_s: 8.0
+  sigma_limit: 0.95
+  drift_sigma_per_s: 0.03
+  drift_sigma_per_m: 0.05
+readiness_timeout: 180.0
+waypoint_timeout: 600.0
+goal_tolerance: 0.8
+arrival_reserve: 0.15
+controller_frequency: 10.0
+costmap_resolution: 0.1
+slam_map_update_interval: 1.0
+sensor_timeout: 1.0
+direction_probe_m: 3.0
+direction_probe_step_m: 0.25
+map_timeout: 60.0
+live_scan_override_range: 4.0
+live_scan_free_margin: 0.35
+max_inflation_escape_gap: 0.5
+pose_stable_seconds: 1.0
+pose_position_jump_tolerance: 0.5
+pose_heading_jump_tolerance_degrees: 20.0
+planning_resolution: 0.25
+planning_margin: 8.0
+planning_max_cells: 250000
+planning_max_expansions: 120000
+planning_time_limit: 0.25
+replan_interval: 1.0
+occupied_threshold: 65
+unknown_cost: 2.0
+clearance_cost: 0.3
+chance_quantile: 2.326
+lookahead: 2.5
+route_deviation_limit: 1.5
+local_safety_margin: 0.08
+prediction_dt: 0.1
+prediction_steps: 25
+linear_samples: 5
+angular_samples: 13
+goal_weight: 3.0
+heading_weight: 0.7
+turn_in_place_heading_degrees: 25.0
+obstacle_weight: 2.5
+obstacle_decay: 2.0
+smoothness_weight: 0.7
+angular_smoothness_weight: 0.6
+turn_toward_obstacle_penalty: 1.2
+standstill_penalty: 0.8
+progress_distance: 0.25
+progress_timeout: 15.0
+obstacle_avoid_distance: 1.0
+backup_distance: 3.0
+backup_min_distance: 0.4
+backup_timeout: 30.0
+recovery_turn_angle_degrees: 40.0
+recovery_turn_timeout: 10.0
+recovery_turn_speed: 0.3
+recovery_curve_speed: 0.25
+recovery_wait: 2.0
+recovery_retries: 5
+waypoint_scan_wait: 0.5
+waypoint_rescan_wait: 0.3
+waypoint_heading_degrees: 7.0
+waypoint_align_timeout: 12.0
+dstar_reset_fraction: 0.05
+live_scan_obstacle_range: 8.0
+corridor_step_m: 1.5
+corridor_min_goal_progress_m: 0.2
+corridor_heading_step_degrees: 20
+corridor_ray_margin_m: 0.1
+corridor_ray_sector_degrees: 5
+corridor_stall_seconds: 4.0
+corridor_arrival_m: 0.35
+corridor_repeat_radius_m: 0.75
+corridor_memory_count: 4
+corridor_clearance_weight: 0.12
+corridor_turn_weight: 0.2
+corridor_goal_heading_weight: 0.1
+goal_commit_max_distance_m: 6.0
+goal_commit_scan_margin_m: 0.25
+goal_commit_extra_clearance_m: 0.1

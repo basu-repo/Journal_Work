@@ -1,0 +1,21 @@
+extends: motion_settings.yaml
+# Keep the Dijkstra model's original edge scoring independent of state-lattice tuning.
+lattice_comfort_distance_m: 0.0
+lattice_comfort_weight: 0.0
+lattice_turn_cost: 0.0
+# Retain the shared occupancy and clearance costs. A direct, collision-checked
+# lattice primitive handles obvious open-space progress before graph search.
+lattice_handoff_lookahead_m: 1.0
+# A stationary search must not consume tens of seconds. Try another local
+# target after five seconds, and rebuild planning state after three consecutive
+# timeouts without acquiring an executable primitive.
+lattice_search_budget_s: 5.0
+lattice_search_round_robin_retries: 3
+# The 0.5 m planning grid and finite motion primitives cannot land on every
+# free cell. Accept a safe primitive endpoint within one grid-cell diagonal of
+# the rolling local target; the following planning cycle continues from there.
+lattice_goal_tolerance_m: 0.75
+# Finalized comparison baseline: SLAM/EKF only, with no GNSS acquisition,
+# periodic waypoint correction or background prefetch behavior.
+waypoint_gnss_verification: false
+lattice_prefetch_enabled: false
