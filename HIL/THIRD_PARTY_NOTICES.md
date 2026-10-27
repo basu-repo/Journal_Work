@@ -12,9 +12,10 @@ The complete upstream LICENSE is preserved in vendor/FAST_LIO/LICENSE
 (GNU GPL version 2). Upstream package.xml declares BSD; this metadata discrepancy
 is retained here rather than treated as permission to replace the supplied license.
 IKFoM and ikd-Tree source/header notices are retained in their bundled files.
-The delivery adds missing build dependency declarations and installs only the
-configuration directory because upstream RViz/launch examples are not needed
-by the portable launcher.
+The delivery adds missing build dependency declarations. Sensor configurations
+live in the top-level config directory and are loaded by the portable launcher.
+Unused plotting/OpenCV wrapper headers and the unused Python plotting linkage
+are omitted. Required estimator, manifold and ikd-Tree source is retained.
 The packaged C++ source also guards optional debug-file handles during shutdown,
 so a source checkout without a Log directory can stop cleanly.
 
@@ -24,5 +25,5 @@ src/dijkstra_lattice. Imports/class names are localized for portability. The
 executable always selects forward Dijkstra search; shared graph infrastructure
 does not expose another planner selection in run_hil.py.
 
-The delivery includes the original execution report as historical simulation
-evidence. Receiving-platform configuration and physical validation are separate.
+Historical simulation reports remain in the main project. Receiving-platform
+configuration and physical validation are separate.

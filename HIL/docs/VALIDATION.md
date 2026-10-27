@@ -1,30 +1,44 @@
-# Delivery validation and experimental evidence
+# HIL verification and acceptance
 
-This delivery packages the current Dijkstra state-lattice implementation and
-FAST-LIO2 snapshot source. It also adds a configurable body-to-base adapter,
-localization health publisher, launcher and hardware command watchdog.
+Delivery checks on Ubuntu 24.04 / ROS 2 Jazzy / Python 3.12 / C++17:
 
-The validation record must distinguish these checks:
-- Source/unit tests: shortest paths against an independent cost search, obstacle
-  changes, primitive motion limits, directional clearance, rejected-direct-branch
-  handling, calibrated pose conversion and fail-closed command gating.
-- Build: bundled FAST-LIO source compiled under ROS 2 Jazzy/C++17.
-- Configuration: offline primitive generation and localization command/config generation.
-- ROS bench smoke: initialization of packaged components without a powered robot.
-- Full-mission evidence: earlier original-workspace simulation runs documented
-  in report/FAST_LIO2_NAVIGATION_EXECUTION_RESULTS.md.
-- Receiving robot: calibration, sensor checks and powered HIL acceptance remain
-  to be performed by the team. Earlier mission results do not validate its hardware.
+- Bundled FAST-LIO2 source build passed.
+- All 15 automated tests passed.
+- Example mission and motion primitive generation passed.
+- Localization configuration and command generation passed.
+- Isolated disarmed startup and clean shutdown passed for FAST-LIO2,
+  pose conversion, segmentation, scan conversion, SLAM Toolbox and navigation.
 
-The preserved report records Baylands successful trials, cross-environment
-results and the Warehouse failure. It must not be read as a claim that every
-environment succeeds.
+The ROS startup test used domain 84 with no robot driver or live sensor stream.
+Navigation correctly held zero command while clock, scan, odometry and map
+were absent. This checks startup and input gating; it does not demonstrate
+localization accuracy or a completed mission.
 
-For every receiving-team trial save source commit, configs, ROS distro,
-clock mode, LiDAR fields/rate, IMU rate, map resolution, physical waypoint error,
-final physical goal error, trajectory RMSE (if independent reference available),
-collisions, stationary duration, recovery count and TF fallback ages.
+Tests verify shortest-path costs against an independent search, obstacle
+changes, directional clearance, primitive motion limits, rejected direct
+primitives, calibrated pose/covariance conversion, command clamping and
+freshness/readiness gating. Keep tests in this handoff so the receiving team
+can check installation and subsequent integration changes.
 
-A completed mission requires independently verified physical arrival with
-zero obstacle contacts. A plotted route or reported waypoint arrival alone
-does not establish correct localization.
+Historical full-mission reports are kept in the main project, outside HIL.
+Physical calibration and powered HIL acceptance remain the receiving team's
+responsibility. See HARDWARE_CHECKLIST.md and the root README.
+
+For each trial save the source commit, configuration, sensor fields/rates,
+clock mode, physical waypoint and final goal errors, independent trajectory
+error where available, collisions, stationary duration, recovery count and TF
+fallback ages. Independently verify physical arrival with zero obstacle
+contacts before counting a mission as successful.
+
+## Package contents
+
+Only application source, required build/runtime dependencies, sensor/mission
+configuration templates, build/launch/check scripts, focused tests, licenses,
+the checksum manifest and operating instructions belong in this folder.
+
+Compiler dependency checks identified three unused upstream headers:
+Exp_mat.h, matplotlibcpp.h and wrapped_cv_mat.hpp. These are omitted along
+with the duplicate vendor sensor configuration, historical research report,
+overlapping documentation and the two-line ikd-Tree README.
+The source's imported shared navigation modules remain required dependencies,
+including modules whose optional GNSS behavior is disabled by the runner.

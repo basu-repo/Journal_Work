@@ -31,7 +31,7 @@ Run all commands from this HIL directory in a ROS 2 Jazzy environment:
 ```bash
 source /opt/ros/jazzy/setup.bash
 sudo apt install python3-colcon-common-extensions python3-rosdep \
-  python3-numpy python3-scipy python3-yaml python3-dev \
+  python3-numpy python3-scipy python3-yaml \
   ros-jazzy-pcl-ros ros-jazzy-pcl-conversions ros-jazzy-tf2-ros \
   ros-jazzy-rtabmap-util ros-jazzy-pointcloud-to-laserscan ros-jazzy-slam-toolbox
 rosdep install --from-paths vendor/FAST_LIO --ignore-src -r -y --rosdistro jazzy
@@ -40,8 +40,11 @@ source fastlio_ws/install/setup.bash
 export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
 ```
 
-See [dependencies](docs/DEPENDENCIES.md) for prerequisites. Build/install/log
-directories are generated locally and excluded from Git.
+Run these commands with the system Python supplied with ROS 2 Jazzy. Initialize
+rosdep once if needed with `sudo rosdep init`, then run `rosdep update`.
+Build/install/log directories are generated locally and excluded from Git.
+Eigen3, PCL, ROS message generation and the required IKFoM/ikd-Tree source are
+included through the dependency installation and bundled FAST-LIO2 source.
 
 ## Configure once for the receiving platform
 
@@ -116,11 +119,12 @@ python3 -m unittest discover -s tests -t . -v
 sha256sum -c SHA256SUMS
 ```
 
-The original simulation evidence is in [the execution report](report/FAST_LIO2_NAVIGATION_EXECUTION_RESULTS.md).
 The delivery's build/tests and remaining hardware acceptance work are documented
 in [validation](docs/VALIDATION.md). Physical robot performance has not been
 validated here. Site speed limits are conservative examples, not reproduced
 Baylands benchmark parameters.
+Research reports remain in the main project's report folder rather than this
+runtime handoff package.
 
 ## Files
 
