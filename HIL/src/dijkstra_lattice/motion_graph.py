@@ -1,4 +1,4 @@
-"""Directed motion graph over precompiled differential-drive primitives."""
+"""Motion graph geometry and costs inherited by forward Dijkstra search."""
 import math
 import numpy as np
 from .graph_search import GraphSearchBase,INF
@@ -6,7 +6,7 @@ from .graph_search import GraphSearchBase,INF
 GOAL=(-1,-1,-1)
 
 class MotionGraph(GraphSearchBase):
-    algorithm='motion_graph'
+    algorithm='dstar_state_lattice'
     def __init__(self):
         super().__init__()
         self.goal_cell=None

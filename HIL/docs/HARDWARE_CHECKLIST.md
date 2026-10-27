@@ -1,32 +1,25 @@
-# Hardware Test Acceptance Checklist
+# Physical robot acceptance
 
-## Gate 1: powered-off inspection
+Before motion, verify:
 
-- [ ] Physical E-stop cuts motor power and has been demonstrated.
-- [ ] A safety operator can reach the E-stop throughout the test.
-- [ ] LiDAR, IMU and wheel odometry timestamps use the same clock.
-- [ ] Measured LiDAR-to-base transform matches the TF tree.
-- [ ] Footprint and speed limits match the selected physical robot.
+- The base driver accepts geometry_msgs/Twist on hardware_command_topic.
+  Supply an explicit bridge if the driver requires TwistStamped or another type.
+- Only the watchdog publishes to the enabled base command channel.
+- Command loss stops the platform through its driver timeout.
+- The physical E-stop independently removes motion authority.
+- The measured footprint, base origin, limits and reverse clearance are correct.
+- The IMU provides raw acceleration including gravity and angular velocity in
+  documented right-handed axes, SI units and a common sensor clock.
+- LiDAR fields/time units match the selected FAST-LIO handler.
+- LiDAR-to-IMU calibration in FAST-LIO and body-to-base calibration in the
+  adapter agree with the URDF mounting tree.
+- Exactly one owner publishes map-to-odom and one owns odom-to-base.
+- No GNSS or Gazebo ground truth feeds localization or planning.
+- Ground returns, body returns and low obstacles are classified correctly.
+- All topics pass live preflight; readiness drops when odometry/map/TF stops.
+- Disarmed operation emits zero hardware velocity.
+- Armed bench operation stops when command, scan, odometry or readiness becomes stale.
+- Independent observations confirm physical waypoint/goal arrival.
 
-## Gate 2: motors disabled or wheels lifted
-
-- [ ] `scripts/preflight.py` passes all topic, type and TF checks.
-- [ ] RViz map, LiDAR and robot pose remain aligned during hand motion.
-- [ ] Positive linear commands correspond to physical forward motion.
-- [ ] Positive angular commands correspond to counter-clockwise yaw.
-- [ ] Stopping the planner, LiDAR or odometry produces zero command within 1 s.
-
-## Gate 3: restrained low-speed test
-
-- [ ] Reduce `max_linear_speed` and `max_angular_speed` before arming.
-- [ ] Use one target 2--3 m ahead in a clear controlled area.
-- [ ] Record `/lidar/points`, `/scan`, `/map`, odometry, TF, planner path and commands.
-- [ ] Confirm planned path clearance using measured robot footprint.
-- [ ] Confirm E-stop under commanded motion.
-
-## Gate 4: waypoint experiment
-
-- [ ] Survey waypoint coordinates in the current map frame.
-- [ ] Define success tolerance before the run.
-- [ ] Use independent position measurement for evaluation.
-- [ ] Preserve complete run logs and bag; report failures as failures.
+Keep a human operator and clear test area during initial powered trials.
+Record site configuration and ROS data with each experiment.

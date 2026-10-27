@@ -1,5 +1,11 @@
 extends: motion_settings.yaml
-# Keep the Dijkstra model's original edge scoring independent of state-lattice tuning.
+
+# In GNSS-denied operation the independently measured residual pose error is
+# several decimetres even after fusion. Require the estimated pose to get
+# within 0.30 m of a target (goal_tolerance 0.80 - reserve 0.50) before the
+# mission advances, leaving physical margin for that residual uncertainty.
+arrival_reserve: 0.50
+# Keep this comparison model's original edge scoring independent of DstarLattice tuning.
 lattice_comfort_distance_m: 0.0
 lattice_comfort_weight: 0.0
 lattice_turn_cost: 0.0
@@ -16,6 +22,6 @@ lattice_search_round_robin_retries: 3
 # the rolling local target; the following planning cycle continues from there.
 lattice_goal_tolerance_m: 0.75
 # Finalized comparison baseline: SLAM/EKF only, with no GNSS acquisition,
-# periodic waypoint correction or background prefetch behavior.
-waypoint_gnss_verification: false
+# periodic waypoint fix, or D* background prefetch behavior.
+waypoint_gnss_verification: true
 lattice_prefetch_enabled: false

@@ -83,6 +83,7 @@ class DijkstraLatticeTests(unittest.TestCase):
     def test_open_space_selects_immediate_progress_primitive(self):
         navigator = DijkstraNavigator.__new__(DijkstraNavigator)
         navigator.cfg = dict(lattice_min_goal_progress_m=.2)
+        navigator.start_rejection_streak = 0
         navigator.planner = MotionDijkstra().configure(self.library)
         navigator.log = mock.Mock()
         grid = Grid(np.zeros((20, 20), bool))
@@ -97,6 +98,13 @@ class DijkstraLatticeTests(unittest.TestCase):
         self.assertEqual(segments[0][2]['kind'], 'curve')
         endpoint = navigator.planner.world_samples(source, segments[0][2], start)[-1]
         self.assertLess(math.dist(endpoint, goal), math.dist(start, goal))
+        navigator.log.assert_called_once()
+
+    def test_rejected_direct_primitive_requires_detour_search(self):
+        navigator = DijkstraNavigator.__new__(DijkstraNavigator)
+        navigator.start_rejection_streak = 1
+        navigator.log = mock.Mock()
+        self.assertIsNone(navigator.immediate_progress_segments((0, 0, 0), (0., 0.), (5., 0.)))
         navigator.log.assert_called_once()
 
 

@@ -1,4 +1,4 @@
-# Shared navigation settings; robot profile and terrain are selected by the runner.
+# Independent original D* settings; robot profile and terrain are selected by the runner.
 startup_delay: 30.0
 gnss_segments:
   segment_m: 3.0
@@ -11,7 +11,7 @@ gnss_segments:
 readiness_timeout: 180.0
 waypoint_timeout: 600.0
 goal_tolerance: 0.8
-arrival_reserve: 0.15
+arrival_reserve: 0.50
 controller_frequency: 10.0
 costmap_resolution: 0.1
 slam_map_update_interval: 1.0

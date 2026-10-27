@@ -2,9 +2,34 @@
 # configuration. The planner has no dependency on a particular terrain.
 base_frame: base_link
 map_frame: map
-odom_frame: odom
-odom_topic: /odom
+odom_frame: odom_lidar
+odom_topic: /fastlio/odometry_base
 localization_mode: slam
+use_sim_time: false
+
+# Supplied localization launcher reads this section. Set calibration_confirmed
+# only after measuring these values and verifying frames on the receiving robot.
+localization:
+  calibration_confirmed: false
+  fastlio_config: fastlio.site.yaml
+  pointcloud_topic: /lidar/points
+  imu_topic: /imu/data
+  raw_odom_topic: /fastlio/odometry
+  source_frame: camera_init
+  source_body_frame: body
+  # Pose of base_link expressed in FAST-LIO's IMU/body frame (x,y,z and x,y,z,w).
+  body_to_base_translation: [0.0, 0.0, 0.0]
+  body_to_base_quaternion: [0.0, 0.0, 0.0, 1.0]
+  min_height: 0.15
+  max_height: 2.0
+  range_min: 0.8
+  range_max: 60.0
+  scan_angle_increment: 0.006135923151542565
+  scan_period: 0.1
+  sensor_timeout: 1.0
+  map_timeout: 10.0
+  tf_timeout: 0.5
+  stable_seconds: 2.0
 
 # Rectangle shown only as an example: [front/back, left/right] metres from base_link.
 footprint:

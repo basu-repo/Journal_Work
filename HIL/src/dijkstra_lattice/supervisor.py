@@ -1,4 +1,4 @@
-"""Dijkstra lattice recovery supervisor with checked reverse and rotation.
+"""Independent D* recovery supervisor with checked reverse and rotation.
 
 The caller retains sensor obstacles throughout recovery; it never clears real
 obstacles to force a reverse. Shared localization health gates all commands.

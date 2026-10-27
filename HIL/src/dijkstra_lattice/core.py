@@ -1,4 +1,4 @@
-"""Dijkstra lattice local motion controller and collision checks.
+"""D* local motion controller and collision checks.
 
 Retains velocity rollout, hard obstacle rejection, progress/heading/smoothness
 costs, obstacle-side cues and checked reverse/rotation recovery. Geometry and

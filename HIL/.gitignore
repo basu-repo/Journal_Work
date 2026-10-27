@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+fastlio_ws/
+runs/
+config/*.site.yaml
+*.db
+*.db3
+*.mcap

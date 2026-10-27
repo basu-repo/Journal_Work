@@ -1,7 +1,7 @@
 """Forward Dijkstra search over the directed motion-primitive graph.
 
 Search starts at the robot's single measured heading and stops at the first
-settled goal-cell heading. It uses no heuristic or incremental route repair.
+settled goal-cell heading. It uses no heuristic, D* repair, or A* fallback.
 """
 import heapq
 import math

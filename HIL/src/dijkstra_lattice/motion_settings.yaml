@@ -56,6 +56,14 @@ backup_timeout: 10.0
 # its LiDAR occupancy map without scan-matching pose corrections.
 slam_use_scan_matching: false
 slam_do_loop_closing: false
+# D* only: calculate the route beyond the current segment before it finishes.
+lattice_prefetch_enabled: true
+lattice_prefetch_remaining_segments: 3
+lattice_prefetch_time_slice_s: 0.05
+lattice_prefetch_max_age_s: 20.0
+lattice_prefetch_max_wall_s: 20.0
+lattice_prefetch_position_tolerance_m: 0.75
+lattice_prefetch_heading_tolerance_rad: 0.45
 
 lattice_terminal_activation_m: 1.5
 lattice_terminal_speed: 0.35

@@ -12,6 +12,7 @@ from nav_msgs.msg import Odometry
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, qos_profile_sensor_data
+from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Bool
 
@@ -22,10 +23,13 @@ class Watchdog(Node):
         self.cfg = cfg
         self.armed = armed
         self.enabled = False
+        self.ready = False
+        self.last_ready = 0.0
         self.command = Twist()
         self.last_command = self.last_scan = self.last_odom = 0.0
         qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(Bool, '/hil/navigation_enabled', self.on_enable, qos)
+        self.create_subscription(Bool, '/localization/ready', self.on_ready, qos)
         self.create_subscription(Twist, cfg['planner_command_topic'], self.on_command, 10)
         self.create_subscription(LaserScan, cfg['scan_topic'], self.on_scan, qos_profile_sensor_data)
         self.create_subscription(Odometry, cfg['odom_topic'], self.on_odom, qos_profile_sensor_data)
@@ -33,6 +37,7 @@ class Watchdog(Node):
         self.create_timer(0.05, self.tick, clock=Clock(clock_type=ClockType.STEADY_TIME))
 
     def on_enable(self, msg): self.enabled = bool(msg.data)
+    def on_ready(self, msg): self.ready, self.last_ready = bool(msg.data), time.monotonic()
     def on_command(self, msg): self.command, self.last_command = msg, time.monotonic()
     def on_scan(self, msg):
         if msg.ranges: self.last_scan = time.monotonic()
@@ -47,7 +52,7 @@ class Watchdog(Node):
                      (self.command.linear.x, self.command.angular.z))
         fresh = (now - self.last_command < self.cfg['command_timeout'] and
                  now - self.last_scan < 1.0 and now - self.last_odom < 1.0)
-        if self.armed and self.enabled and finite and fresh:
+        if self.armed and self.enabled and self.ready and now-self.last_ready < 1.0 and finite and fresh:
             out.linear.x = max(-self.cfg['reverse_speed'],
                                min(self.cfg['max_linear_speed'], self.command.linear.x))
             out.angular.z = max(-self.cfg['max_angular_speed'],
@@ -61,7 +66,7 @@ def main():
     parser.add_argument('--arm', action='store_true')
     args, ros = parser.parse_known_args()
     cfg = yaml.safe_load(args.config.read_text())
-    rclpy.init(args=ros)
+    rclpy.init(args=ros, signal_handler_options=SignalHandlerOptions.NO)
     node = Watchdog(cfg, args.arm)
     print('HIL watchdog:', 'ARMED' if args.arm else 'DISARMED (zero velocity only)', flush=True)
     try: rclpy.spin(node)
