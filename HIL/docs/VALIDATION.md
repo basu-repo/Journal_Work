@@ -1,44 +1,45 @@
-# HIL verification and acceptance
+# Verify the installation and record acceptance results
 
-Delivery checks on Ubuntu 24.04 / ROS 2 Jazzy / Python 3.12 / C++17:
+Run the automated tests using the command in the root README before starting
+your hardware trials. Repeat them after changing the integration or software.
 
-- Bundled FAST-LIO2 source build passed.
-- All 15 automated tests passed.
-- Example mission and motion primitive generation passed.
-- Localization configuration and command generation passed.
-- Isolated disarmed startup and clean shutdown passed for FAST-LIO2,
-  pose conversion, segmentation, scan conversion, SLAM Toolbox and navigation.
-
-The ROS startup test used domain 84 with no robot driver or live sensor stream.
-Navigation correctly held zero command while clock, scan, odometry and map
-were absent. This checks startup and input gating; it does not demonstrate
-localization accuracy or a completed mission.
-
-Tests verify shortest-path costs against an independent search, obstacle
+The tests cover shortest-path costs against an independent search, obstacle
 changes, directional clearance, primitive motion limits, rejected direct
 primitives, calibrated pose/covariance conversion, command clamping and
-freshness/readiness gating. Keep tests in this handoff so the receiving team
-can check installation and subsequent integration changes.
+freshness/readiness gating.
 
-Historical full-mission reports are kept in the main project, outside HIL.
-Physical calibration and powered HIL acceptance remain the receiving team's
-responsibility. See HARDWARE_CHECKLIST.md and the root README.
+## Checks completed before delivery
 
-For each trial save the source commit, configuration, sensor fields/rates,
-clock mode, physical waypoint and final goal errors, independent trajectory
-error where available, collisions, stationary duration, recovery count and TF
-fallback ages. Independently verify physical arrival with zero obstacle
-contacts before counting a mission as successful.
+The following checks passed on Ubuntu 24.04 with ROS 2 Jazzy, Python 3.12
+and C++17:
 
-## Package contents
+- FAST-LIO2 source build.
+- All 15 automated tests.
+- Example mission and motion primitive generation.
+- Localization configuration and command generation.
+- Isolated disarmed startup and clean shutdown of FAST-LIO2, pose conversion,
+  segmentation, scan conversion, SLAM Toolbox and navigation.
 
-Only application source, required build/runtime dependencies, sensor/mission
-configuration templates, build/launch/check scripts, focused tests, licenses,
-and operating instructions belong in this folder.
+The ROS startup check used domain 84 without a robot driver or live sensor
+stream. Navigation held zero command while clock, scan, odometry and map inputs
+were absent. These results verify startup and input gating; they do not
+establish localization accuracy or physical mission completion.
 
-Compiler dependency checks identified three unused upstream headers:
-Exp_mat.h, matplotlibcpp.h and wrapped_cv_mat.hpp. These are omitted along
-with the duplicate vendor sensor configuration, historical research report,
-overlapping documentation and the two-line ikd-Tree README.
-The source's imported shared navigation modules remain required dependencies,
-including modules whose optional GNSS behavior is disabled by the runner.
+## Validate your platform
+
+Complete the calibration, sensor checks and powered acceptance tests described
+in [the hardware checklist](HARDWARE_CHECKLIST.md) and [the root README](../README.md).
+Start with a short controlled route before attempting the full mission.
+
+Save the following information for each trial:
+
+- Source commit and site configuration.
+- Sensor message fields, publication rates and clock mode.
+- Physical waypoint and final goal errors.
+- Independent trajectory error, when a reference is available.
+- Collisions, stationary duration and recovery count.
+- TF fallback ages.
+
+Independently verify physical arrival and check for obstacle contacts before
+counting a mission as successful. A reported waypoint arrival or plotted path
+alone does not establish accurate localization.
