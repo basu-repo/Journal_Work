@@ -35,13 +35,19 @@ def main():
     watchdog = [sys.executable, str(ROOT/'scripts/hardware_watchdog.py'),
                 '--config', str(output/'robot.yaml')]
     if args.arm: watchdog.append('--arm')
+    clock_args = ['--ros-args', '-p', 'use_sim_time:='+str(robot.get('use_sim_time', False)).lower()]
+    watchdog += clock_args
+    health = [sys.executable, str(ROOT/'localization/health.py'),
+              '--robot', str(output/'robot.yaml')] + clock_args
     planner = [sys.executable, '-m', planner_name+'.node', '--robot', str(output/'robot.yaml'),
                '--mission', str(output/'mission.yaml'), '--output', str(output), '--ros-args',
                '-r', '/scan:='+robot['scan_topic'],
                '-r', '/map:='+robot['map_topic'],
                '-r', '/cmd_vel:='+robot['planner_command_topic'],
-               '-r', '/navigation/enabled:=/hil/navigation_enabled']
-    processes = [subprocess.Popen(watchdog, env=env, start_new_session=True),
+               '-r', '/navigation/enabled:=/hil/navigation_enabled',
+               '-p', 'use_sim_time:='+str(robot.get('use_sim_time', False)).lower()]
+    processes = [subprocess.Popen(health, env=env, start_new_session=True),
+                 subprocess.Popen(watchdog, env=env, start_new_session=True),
                  subprocess.Popen(planner, env=env, start_new_session=True)]
     print('Run:', output, '|', 'ARMED' if args.arm else 'DISARMED', flush=True)
     try:

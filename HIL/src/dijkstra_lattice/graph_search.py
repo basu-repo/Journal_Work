@@ -1,4 +1,9 @@
-"""Reusable weighted-grid graph operations used by the motion-lattice search."""
+"""Inherited weighted-grid infrastructure used by the motion graph.
+
+The package's MotionDijkstra overrides update, compute and path with forward
+Dijkstra search. Legacy repair helpers are retained for source compatibility;
+this module is not an executable planner.
+"""
 import heapq
 import math
 import time
@@ -198,7 +203,7 @@ class GraphSearchBase:
         deadline = time.monotonic() + seconds
         expanded = 0
         while self.top() < INF:
-            # Incremental search stops once the robot state is closed and no open
+            # Original D* stops once the robot state is closed and no open
             # state can still lower its current route cost.
             if (self.tag.get(self.start) == 'CLOSED' and
                     self.top() >= self.h.get(self.start, INF)):

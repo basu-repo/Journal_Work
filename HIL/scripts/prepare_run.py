@@ -26,11 +26,19 @@ def main():
     args = p.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     robot = yaml.safe_load(args.robot.read_text())
+    if robot.get('map_frame', 'map') != 'map':
+        raise ValueError('This planner requires map_frame: map; transform site goals into map')
+    if robot['planner_command_topic'] == robot['hardware_command_topic']:
+        raise ValueError('Planner and hardware command topics must be distinct')
     planner_name = 'dijkstra_lattice'
     mission = settings(ROOT/'src'/planner_name/'settings.yaml')
     mission.update(yaml.safe_load(args.mission.read_text()))
-    mission.update(localization_mode='slam', gnss_mode='denied', odom_topic=robot['odom_topic'],
+    mission.update(localization_mode='slam', gnss_mode='denied', waypoint_gnss_verification=False,
+                   odom_topic=robot['odom_topic'],
                    base_frame=robot['base_frame'])
+    targets = mission.get('targets', [])
+    if not targets or any(not all(k in t for k in ('name', 'x', 'y')) for t in targets):
+        raise ValueError('Mission requires targets with name, x and y in the map frame')
     primitive = args.output/'motion_primitives.json'
     mission['primitive_file'] = str(primitive)
     from dijkstra_lattice.primitives import compile_library

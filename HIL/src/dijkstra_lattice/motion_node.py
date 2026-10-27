@@ -1,4 +1,4 @@
-"""Dijkstra-compatible controller for a differential-drive state lattice."""
+"""Tracking and planning adapter for a precompiled differential-drive lattice."""
 import json
 import math
 import time
@@ -38,9 +38,9 @@ def committed_rollout_clear(grid,trial,active_samples,tolerance):
     return bool(on_route and grid.motion_clear(trial,grid.hard_radius))
 
 class MotionNavigator(LatticeNavigator):
-    planner_type=MotionGraph
-    algorithm='motion_graph'
-    route_topic='/dstarlattice/path'
+    planner_type=None
+    algorithm='state_lattice_base'
+    route_topic='/dijkstra_lattice/path'
 
     def make_planner(self):
         data=load_library(self.cfg['primitive_file'],self.robot,self.cfg)
@@ -62,6 +62,7 @@ class MotionNavigator(LatticeNavigator):
         self.prefetch_accepted=0;self.prefetch_rejected=0
         self.recovery_rounds=0;self.recoveries_before_reset=0
         self.search_timeout_streak=0;self.search_round_robin_resets=0
+        self.start_rejection_streak=0
 
     def reset_recovery_cycle(self,now,pose,local_pose):
         """Restart lattice navigation after three recoveries in GNSS denial.
@@ -107,7 +108,7 @@ class MotionNavigator(LatticeNavigator):
 
     def _prefetch_enabled(self):
         # DijkstraLattice inherits this class but remains a separate baseline.
-        return False and self.cfg.get('lattice_prefetch_enabled',False)
+        return False
 
     def defer_periodic_gnss(self):
         """Finish a route while its localization estimate remains healthy."""
@@ -299,19 +300,22 @@ class MotionNavigator(LatticeNavigator):
         yaw=samples[:,2]+math.atan2(self.grid.rot[1,0],self.grid.rot[0,0])+residual
         radius=self.grid.hard_radius if primitive['kind']=='rotate' else self.grid.radius
         if not self.grid.motion_clear(xy,radius):
+            self.start_rejection_streak+=1
             self.log('primitive_rejected',reason='adapted_sweep_blocked',
-                     primitive_id=primitive['id'])
+                     primitive_id=primitive['id'],
+                     consecutive_start_rejections=self.start_rejection_streak)
             self.active=None;self.active_samples=None;self.segments=[]
             self.path=[];self.route_reason='primitive_start_blocked'
-            if False and self.macro_subgoal is not None:
+            if self.algorithm=='dstar_state_lattice' and self.macro_subgoal is not None:
                 # DijkstraLattice already discards this failed macro target.
-                # incremental graph search must do the same, or it searches repeatedly
+                # Original D* must do the same, or it searches repeatedly
                 # toward a target whose first measured-pose sweep is blocked.
                 self.failed_subgoals.append(self.macro_subgoal)
                 self.failed_subgoals=self.failed_subgoals[-8:]
                 self.macro_subgoal=None
             return
         self.active=(state,primitive)
+        self.start_rejection_streak=0
         # A usable motion has been acquired, so the planning-pause watchdog is
         # satisfied. Only consecutive searches with no executable primitive
         # count toward its round-robin reset.
@@ -436,7 +440,7 @@ class MotionNavigator(LatticeNavigator):
 
     def global_plan(self,pose,goal,now):
         # The base mission tick calls planning before the supervisor step.
-        # A pending graph search would make that tick return before recovery
+        # A pending D* search would make that tick return before recovery
         # receives its reverse/rotation command. Suspend search completely
         # until the supervisor has finished its maneuver or waypoint handoff.
         if self.supervisor.state not in ('GOTO_WAYPOINT','OBSTACLE_AVOID'):
@@ -496,7 +500,7 @@ class MotionNavigator(LatticeNavigator):
                 self.planner=self.make_planner();self.path=[];self.segments=[]
                 self.route_reason='search_budget_exceeded';self.last_plan=-float('inf')
                 # Computation alone is not evidence of a physically blocked
-                # robot.  This applies to Dijkstra; otherwise a
+                # robot.  This applies to Dijkstra as well as D*; otherwise a
                 # search timeout is misclassified as a driving stall and
                 # triggers a needless three-metre recovery backup.
                 self.supervisor.blocked_since=None
@@ -547,7 +551,7 @@ class MotionNavigator(LatticeNavigator):
         if self.macro_goal!=tuple(goal):
             self.macro_goal=tuple(goal);self.macro_subgoal=None
         # Keep the selected target when the direct sightline becomes blocked.
-        # the search can repair the route around the new obstacle; replacing the target
+        # D* can repair the route around the new obstacle; replacing the target
         # here would discard its search tree on every sensor update.
         if (self.macro_subgoal is not None and math.dist(start,self.macro_subgoal)>1.
                 and grid.free(grid.cell(self.macro_subgoal))):
@@ -623,9 +627,11 @@ class MotionNavigator(LatticeNavigator):
             if abs(error)>self.cfg['lattice_terminal_heading_tolerance_rad']:
                 desired_v=0.
             else:
+                arrival_radius=max(0.05,self.cfg['goal_tolerance']-
+                                   self.cfg['arrival_reserve'])
                 desired_v=min(self.cfg['lattice_terminal_speed'],
                               math.sqrt(2*self.robot['linear_acceleration']*
-                                        max(0.,distance-self.cfg['goal_tolerance']*.5)))
+                                        max(0.,distance-arrival_radius*.5)))
             desired_w=max(-self.robot['max_angular_speed'],
                           min(self.robot['max_angular_speed'],1.5*error))
             v=max(0.,min(desired_v,self.previous[0]+dv))
@@ -728,8 +734,3 @@ class MotionNavigator(LatticeNavigator):
             data['planning']['prefetch']=dict(started=self.prefetch_started,ready=self.prefetch_ready,
                                               accepted=self.prefetch_accepted,rejected=self.prefetch_rejected)
         p.write_text(json.dumps(data,indent=2))
-
-
-if __name__=='__main__':
-    from .navigator import main
-    raise SystemExit(main(MotionNavigator))

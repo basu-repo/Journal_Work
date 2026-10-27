@@ -1,28 +1,30 @@
-# Delivery Validation
+# Delivery validation and experimental evidence
 
-Validation date: 2026-10-19
+This delivery packages the current Dijkstra state-lattice implementation and
+FAST-LIO2 snapshot source. It also adds a configurable body-to-base adapter,
+localization health publisher, launcher and hardware command watchdog.
 
-## Completed checks
+The validation record must distinguish these checks:
+- Source/unit tests: shortest paths against an independent cost search, obstacle
+  changes, primitive motion limits, directional clearance, rejected-direct-branch
+  handling, calibrated pose conversion and fail-closed command gating.
+- Build: bundled FAST-LIO source compiled under ROS 2 Jazzy/C++17.
+- Configuration: offline primitive generation and localization command/config generation.
+- ROS bench smoke: initialization of packaged components without a powered robot.
+- Full-mission evidence: earlier original-workspace simulation runs documented
+  in report/FAST_LIO2_NAVIGATION_EXECUTION_RESULTS.md.
+- Receiving robot: calibration, sensor checks and powered HIL acceptance remain
+  to be performed by the team. Earlier mission results do not validate its hardware.
 
-- Python bytecode compilation completed for source, scripts and launcher.
-- ROS 2 Jazzy environment was sourced before tests.
-- 9 focused Dijkstra planner, directional-clearance and primitive tests passed.
-- Configuration smoke test merged the Dijkstra lattice settings, generic robot
-  profile and three-target example mission.
-- Motion primitive generation produced 192 primitives.
-- Public launcher help exposes one model only: DijkstraLattice.
-- The public velocity path is planner -> fail-closed watchdog -> `/cmd_vel`.
-- Generic robot-profile smoke check confirmed configurable scan, map, odometry
-  and command topics without terrain or robot model files.
+The preserved report records Baylands successful trials, cross-environment
+results and the Warehouse failure. It must not be read as a claim that every
+environment succeeds.
 
-## Not yet validated
+For every receiving-team trial save source commit, configs, ROS distro,
+clock mode, LiDAR fields/rate, IMU rate, map resolution, physical waypoint error,
+final physical goal error, trajectory RMSE (if independent reference available),
+collisions, stationary duration, recovery count and TF fallback ages.
 
-- Physical Husky topic availability and message rates
-- Sensor extrinsic calibration and timestamp synchronization
-- Live `map -> odom_lidar -> base_link` consistency
-- Wheel slip, stopping distance and skid-steer tracking error
-- Hardware waypoint arrival accuracy
-- Full mission success on the receiving team's test site
-
-The receiving team must complete `HARDWARE_CHECKLIST.md`. Static and unit checks
-do not constitute a successful physical-robot experiment.
+A completed mission requires independently verified physical arrival with
+zero obstacle contacts. A plotted route or reported waypoint arrival alone
+does not establish correct localization.

@@ -21,6 +21,10 @@ class DijkstraNavigator(MotionNavigator):
         collision free and its endpoint measurably reduces straight-line
         distance to the active waypoint.
         """
+        if self.start_rejection_streak:
+            self.log('direct_progress_deferred_after_rejection',
+                     consecutive_start_rejections=self.start_rejection_streak)
+            return None
         current = math.dist(start, goal)
         minimum = float(self.cfg.get('lattice_min_goal_progress_m', .2))
         candidates = []

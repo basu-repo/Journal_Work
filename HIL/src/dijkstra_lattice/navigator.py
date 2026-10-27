@@ -1,4 +1,4 @@
-"""Dijkstra lattice navigation base using live map, LiDAR and pose."""
+"""Navigation base for the packaged Dijkstra state-lattice model."""
 import argparse,json,math,time,threading
 from pathlib import Path
 import numpy as np
@@ -28,15 +28,16 @@ def stamp(m):return m.header.stamp.sec+m.header.stamp.nanosec*1e-9
 
 
 class Navigator(DirectionalCorridors,Node):
-    planner_type=GraphSearchBase
+    planner_type=None
     def make_planner(self):return self.planner_type()
     def __init__(self,cfg,robot,output):
-        super().__init__('dstar_navigation');self.cfg=cfg;self.robot=robot;self.output=output
+        super().__init__('dijkstra_lattice_navigation');self.cfg=cfg;self.robot=robot;self.output=output
         self.localization_group=MutuallyExclusiveCallbackGroup()
         robot['radius']=max(math.hypot(*p) for p in robot['footprint'])+robot['footprint_padding']
         robot['settings']=cfg;self.supervisor=Supervisor(robot)
         self.tf=Buffer();self.listener=TransformListener(self.tf,self)
         self.scan=None;self.map=None;self.map_time=0.;self.odom_time=0.;self.localization_time=0.;self.localization_ok=False
+        self.last_scan_tf_fallback_log=-float('inf')
         self.clock_started=None;self.begin=time.monotonic();self.started=False;self.exit_code=None
         self.sigma=0.;self.ekf_sigma=0.;self.previous=(0.,0.);self.enable_state=None;self.index=0;self.completed=[];self.grid=None;self.path=[];self.route_reason='waiting';self.planner=self.make_planner();self.search_pending_count=0
         self.gnss_mode=cfg.get('gnss_mode')
@@ -50,6 +51,7 @@ class Navigator(DirectionalCorridors,Node):
         self.last_plan=-float('inf');self.last_log=-float('inf');self.target_started=0.;self.progress_pose=None;self.progress_time=0.
         self.progress_best_distance=None
         self.last_state=None;self.pose=None
+        self.command_gate_reason=None;self.command_gate_started=None
         self.pose_pair=None;self.pose_pair_time=None;self.pose_hold_until=-float('inf')
         self.transform_failed_since=None;self.global_checks=0;self.route_searches=0;self.route_sequence=0
         self.last_readiness_log=-float('inf');self.last_missing_inputs=None;self.last_gnss_wait_log=-float('inf')
@@ -57,7 +59,7 @@ class Navigator(DirectionalCorridors,Node):
         self.enable=self.create_publisher(Bool,'/navigation/enabled',qos);self.command=self.create_publisher(Twist,'/cmd_vel',10)
         self.gnss_gate=self.create_publisher(Bool,'/localization/gnss_request',qos) if self.gnss else None
         if self.target_gnss:self.gnss_gate.publish(Bool(data=False))
-        self.path_pub=self.create_publisher(PathMsg,'/dstar/path',qos)
+        self.path_pub=self.create_publisher(PathMsg,'/dijkstra_lattice/path',qos)
         self.create_subscription(LaserScan,'/scan',self.on_scan,qos_profile_sensor_data)
         self.create_subscription(OccupancyGrid,'/map',self.on_map,qos)
         # Availability is based on receipt of the live fused stream.  Its
@@ -139,13 +141,25 @@ class Navigator(DirectionalCorridors,Node):
     def on_scan(self,msg):
         if len(msg.ranges) and any((math.isfinite(x) and msg.range_min<=x<=msg.range_max) or x==float('inf') for x in msg.ranges):self.scan=msg
     def on_map(self,msg):
-        if msg.header.frame_id==self.robot.get('map_frame','map') and msg.info.resolution>0 and len(msg.data)>0 and len(msg.data)==msg.info.width*msg.info.height:
+        if msg.header.frame_id=='map' and msg.info.resolution>0 and len(msg.data)>0 and len(msg.data)==msg.info.width*msg.info.height:
             self.map=msg;self.map_time=self.now()
     def log(self,event,**data):
         record=dict(event=event,wall_time=time.time(),sim_time=self.now(),**data)
         with (self.output/'events.jsonl').open('a') as f:f.write(json.dumps(record)+'\n')
         print(json.dumps(record),flush=True)
-    def emit(self,v=0.,w=0.,enabled=False):
+    def emit(self,v=0.,w=0.,enabled=False,reason=None,**diagnostic):
+        stopped=(not enabled) or (abs(float(v))<1e-9 and abs(float(w))<1e-9)
+        gate=(reason or ('disabled_unspecified' if not enabled else 'commanded_stop')) if stopped else None
+        now=self.now()
+        if gate!=self.command_gate_reason:
+            if self.command_gate_reason is not None and self.command_gate_started is not None:
+                self.log('zero_command_interval',reason=self.command_gate_reason,
+                         started_at=self.command_gate_started,
+                         ended_at=now,duration=max(0.,now-self.command_gate_started))
+            self.command_gate_reason=gate
+            self.command_gate_started=now if gate is not None else None
+            if gate is not None:
+                self.log('zero_command_started',reason=gate,**diagnostic)
         if enabled!=self.enable_state:
             self.enable.publish(Bool(data=enabled));self.enable_state=enabled
         msg=Twist();msg.linear.x=float(v);msg.angular.z=float(w);self.command.publish(msg);self.previous=(float(v),float(w))
@@ -153,13 +167,31 @@ class Navigator(DirectionalCorridors,Node):
         t=self.tf.lookup_transform(frame,self.robot['base_frame'],Time()).transform
         return Pose(t.translation.x,t.translation.y,yaw(t.rotation))
     def obstacles(self):
-        scan=self.scan;t=self.tf.lookup_transform(self.robot.get('map_frame','map'),scan.header.frame_id,Time.from_msg(scan.header.stamp)).transform
+        scan=self.scan
+        try:
+            t=self.tf.lookup_transform('map',scan.header.frame_id,
+                                       Time.from_msg(scan.header.stamp)).transform
+        except TransformException:
+            latest=self.tf.lookup_transform('map',scan.header.frame_id,Time())
+            tf_stamp=stamp(latest);lag=stamp(scan)-tf_stamp
+            # The newest scan can precede FAST-LIO2's TF publication by one
+            # estimator cycle. Use that scan with the newest available pose
+            # only for this tightly bounded interval. Never replay an older
+            # obstacle cloud, which can be unsafe near buildings at speed.
+            if lag<0. or lag>0.15:
+                raise
+            t=latest.transform
+            if self.now()-self.last_scan_tf_fallback_log>=1.:
+                self.last_scan_tf_fallback_log=self.now()
+                self.log('scan_transform_latest_used',lag=lag,
+                         transform_stamp=tf_stamp,requested_stamp=stamp(scan))
         angle=yaw(t.rotation);r=np.asarray(scan.ranges);valid=np.isfinite(r)&(r>=scan.range_min)&(r<=scan.range_max)
         angles=scan.angle_min+np.arange(len(r))*scan.angle_increment+angle
-        return np.column_stack((t.translation.x+r[valid]*np.cos(angles[valid]),t.translation.y+r[valid]*np.sin(angles[valid])))
+        return np.column_stack((t.translation.x+r[valid]*np.cos(angles[valid]),
+                                t.translation.y+r[valid]*np.sin(angles[valid])))
     def scan_free_evidence(self):
         scan=self.scan
-        t=self.tf.lookup_transform(self.robot.get('map_frame','map'),scan.header.frame_id,Time.from_msg(scan.header.stamp)).transform
+        t=self.tf.lookup_transform('map',scan.header.frame_id,Time.from_msg(scan.header.stamp)).transform
         return dict(origin=(t.translation.x,t.translation.y),yaw=yaw(t.rotation),
                     angle_min=scan.angle_min,angle_increment=scan.angle_increment,
                     ranges=scan.ranges,range_max=scan.range_max)
@@ -192,7 +224,7 @@ class Navigator(DirectionalCorridors,Node):
     def target(self):
         t=self.cfg['targets'][self.index];return (t['x'],t['y'])
     def publish_path(self):
-        msg=PathMsg();msg.header.frame_id=self.robot.get('map_frame','map');msg.header.stamp=self.get_clock().now().to_msg()
+        msg=PathMsg();msg.header.frame_id='map';msg.header.stamp=self.get_clock().now().to_msg()
         for x,y in self.path:
             p=PoseStamped();p.header=msg.header;p.pose.position.x=float(x);p.pose.position.y=float(y);p.pose.orientation.w=1.;msg.poses.append(p)
         self.path_pub.publish(msg)
@@ -215,7 +247,7 @@ class Navigator(DirectionalCorridors,Node):
         grid.allow_clear_start(start)
         update=self.planner.update(grid,source,target,start,goal)
         # Retain a route only while every remaining swept segment is still
-        # clear. A changed map or deviation starts a fresh Dijkstra search.
+        # clear. A changed map or deviation sends the request back to D*.
         if self.path:
             position=np.array(start);candidates=[]
             for i,(a,b) in enumerate(zip(self.path,self.path[1:])):
@@ -252,7 +284,7 @@ class Navigator(DirectionalCorridors,Node):
         # Skip path vertices only when the same inflated grid validates the shortcut.
         visible=[i for i,p in enumerate(path) if grid.line_clear(start,p)]
         # If retained SLAM inflation overlaps the current pose, follow the next
-        # ordered route vertex; the fresh LiDAR rollout still rejects collisions.
+        # ordered D* vertex; the fresh LiDAR rollout still rejects collisions.
         i=max(visible) if visible else 0
         for p in path[i:]:
             p=np.array(p);distance=float(np.linalg.norm(p-last))
@@ -292,16 +324,16 @@ class Navigator(DirectionalCorridors,Node):
             if missing!=self.last_missing_inputs or wall-self.last_readiness_log>=5.0:
                 self.log('waiting_for_inputs',missing=missing)
                 self.last_missing_inputs=missing;self.last_readiness_log=wall
-            self.emit()
+            self.emit(reason='missing_inputs',missing=missing)
             if not self.started and wall-self.begin>self.cfg['readiness_timeout']:self.finish(2,'readiness_timeout')
             elif (self.started and now-self.target_started>self.cfg['waypoint_timeout'] and
                   not (self.waypoint_verifier and self.waypoint_verifier.pending)):
                 self.finish(3,'goal_timeout')
             return
-        try:pose=self.transform_pose(self.robot.get('map_frame','map'));local_pose=self.transform_pose(self.cfg.get('odom_frame','odom'));points=self.obstacles()
-        except TransformException:
+        try:pose=self.transform_pose('map');local_pose=self.transform_pose(self.cfg.get('odom_frame','odom'));points=self.obstacles()
+        except TransformException as exc:
             if self.transform_failed_since is None:self.transform_failed_since=now
-            self.emit();return
+            self.emit(reason='transform_unavailable',error=str(exc));return
         self.transform_failed_since=None
         if self.pose_pair is None:
             self.pose_hold_until=now+self.cfg['pose_stable_seconds']
@@ -319,7 +351,7 @@ class Navigator(DirectionalCorridors,Node):
         if self.pose_pair_time is None or now>self.pose_pair_time:
             self.pose_pair=(pose,local_pose);self.pose_pair_time=now
         if now<self.pose_hold_until:
-            self.emit();return
+            self.emit(reason='pose_health_hold');return
         self.pose=pose
         self.sigma=self.ekf_sigma
         if self.gnss and self.gnss.state=='COAST' and not self.target_gnss:
@@ -327,7 +359,8 @@ class Navigator(DirectionalCorridors,Node):
             self.sigma=max(self.sigma,cfg['drift_sigma_per_s']*max(0.,now-self.gnss.coast_started_at)
                            +cfg['drift_sigma_per_m']*self.gnss.distance((local_pose.x,local_pose.y)))
         if not self.started:
-            if wall-self.clock_started<self.cfg['startup_delay']:self.emit();return
+            if wall-self.clock_started<self.cfg['startup_delay']:
+                self.emit(reason='startup_delay');return
             self.started=True;self.target_started=now;self.progress_pose=local_pose;self.progress_time=now
             self.progress_best_distance=None
             self.log('ready');self.log('goal_sent',target=self.cfg['targets'][self.index]['name'])
@@ -370,19 +403,19 @@ class Navigator(DirectionalCorridors,Node):
                        self.localization_ok and math.isfinite(self.ekf_sigma) and
                        self.ekf_sigma<self.cfg['gnss_segments']['sigma_limit'])
                 if not ready:
-                    self.emit();return
+                    self.emit(reason='target_gnss_wait');return
                 self.target_gnss_ready=True;self.path=[];self.last_plan=-float('inf')
                 self.target_heading_pending=True
                 self.target_heading_not_before=now+self.cfg['pose_stable_seconds']
                 self.log('target_gnss_locked',target=self.cfg['targets'][self.index]['name'],
                          fixes=self.gnss.fix_count,position_sigma=self.ekf_sigma)
-                self.emit();return
+                self.emit(reason='target_gnss_pose_hold');return
         # GNSS fixes position, then the robot physically turns toward the
         # target using the corrected position and its fused yaw.  Never write
         # an invented yaw into the estimator.
         if self.target_heading_pending:
             if now<self.target_heading_not_before:
-                self.emit();return
+                self.emit(reason='target_heading_hold');return
             distance=math.dist((pose.x,pose.y),goal)
             if distance>self.cfg['goal_tolerance']-self.cfg['arrival_reserve']:
                 desired=math.atan2(goal[1]-pose.y,goal[0]-pose.x)
@@ -403,7 +436,7 @@ class Navigator(DirectionalCorridors,Node):
             outcome,corrected_distance=self.waypoint_verifier.check(
                 now,goal,(pose.x,pose.y),self.gnss.fix_count,
                 self.gnss.state=='ACQUIRE',self.localization_ok,self.ekf_sigma)
-            if outcome=='waiting':self.emit();return
+            if outcome=='waiting':self.emit(reason='waypoint_gnss_wait');return
             if outcome=='timeout':self.finish(3,'waypoint_gnss_timeout');return
             self.invalidate_after_reanchor()
             if outcome=='accepted':
@@ -425,7 +458,7 @@ class Navigator(DirectionalCorridors,Node):
                 self.progress_time=now;self.progress_pose=local_pose
                 self.progress_best_distance=corrected_distance
                 self.supervisor.waypoint_advanced(now,goal)
-                self.emit()
+                self.emit(reason='waypoint_gnss_rejected_reset')
             return
         if distance<=self.cfg['goal_tolerance']-self.cfg['arrival_reserve']:
             name=self.cfg['targets'][self.index]['name']
@@ -434,7 +467,7 @@ class Navigator(DirectionalCorridors,Node):
                 self.log('waypoint_gnss_check_started',target=name,
                          precheck_distance=distance,estimated_xy=[pose.x,pose.y])
                 self.enter_gnss_acquire(now,'waypoint_verification')
-                self.path=[];self.publish_path();self.emit();return
+                self.path=[];self.publish_path();self.emit(reason='waypoint_gnss_check');return
             self.completed.append(name)
             self.log('waypoint_reached',target=name,estimated_distance=distance,estimated_xy=[pose.x,pose.y],arrival_basis='localization estimate')
             self.advance_waypoint(now,local_pose);return
@@ -456,7 +489,7 @@ class Navigator(DirectionalCorridors,Node):
                     self.last_gnss_wait_log=wall
                     self.log('gnss_acquiring',accepted_fixes=self.gnss.fix_count,
                              position_sigma=self.sigma,has_path=bool(self.path))
-                self.emit();return
+                self.emit(reason='gnss_acquiring');return
         self.global_plan(pose,goal,now)
         self.log_directions(pose,points)
         if self.gnss and not self.target_gnss and not (self.gnss.state=='COAST' and self.defer_periodic_gnss()):
@@ -469,9 +502,9 @@ class Navigator(DirectionalCorridors,Node):
                          coast_distance_m=(self.gnss.last_coast_distance if self.gnss.state=='ACQUIRE'
                                            else self.gnss.distance((local_pose.x,local_pose.y))))
             if self.gnss.state=='ACQUIRE' and acquire_holds_supervisor(self.supervisor.state):
-                self.emit();return
+                self.emit(reason='gnss_acquiring');return
         if self.route_reason=='incremental_search_timeout':
-            self.emit();return
+            self.emit(reason='planner_search_pending');return
         target=self.local_target(pose)
         proposed=self.propose_command(pose,target,points)
         self.note_goal_progress(distance,now,local_pose)
@@ -506,8 +539,13 @@ class Navigator(DirectionalCorridors,Node):
             self.last_state=self.supervisor.state;self.log('state',state=self.last_state,recoveries=self.supervisor.recovery_count)
         if self.supervisor.state=='RECOVERY_FAILED':self.finish(3,'recovery_failed');return
         # If planning took too long, the command must wait for a new scan.
-        if self.now()-stamp(self.scan)>=self.cfg['sensor_timeout']:self.emit();return
-        self.emit(v,w,True)
+        scan_age=self.now()-stamp(self.scan)
+        if scan_age>=self.cfg['sensor_timeout']:
+            self.emit(reason='scan_stale_after_planning',scan_age=scan_age);return
+        stop_reason=None
+        if abs(v)<1e-9 and abs(w)<1e-9:
+            stop_reason='supervisor:'+self.supervisor.state+':planner:'+proposed[2]
+        self.emit(v,w,True,reason=stop_reason)
         if now-self.last_log>=1.:
             self.last_log=now
             remaining=(math.dist((pose.x,pose.y),self.path[1])+sum(math.dist(a,b) for a,b in zip(self.path[1:],self.path[2:]))) if len(self.path)>1 else distance
@@ -539,4 +577,3 @@ def main(navigator_type=Navigator):
         executor.shutdown()
         node.summary()
         if rclpy.ok():node.emit();node.destroy_node();rclpy.shutdown()
-if __name__=='__main__':raise SystemExit(main())

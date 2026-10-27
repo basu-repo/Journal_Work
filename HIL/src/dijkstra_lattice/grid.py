@@ -1,4 +1,4 @@
-"""Sensor-derived grid and swept-clearance checks."""
+"""Sensor-derived grid and swept clearance checks for original D*."""
 import math
 import numpy as np
 from scipy.spatial import cKDTree
