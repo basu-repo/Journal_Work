@@ -116,7 +116,6 @@ ros2 bag record -o runs/site_trial_bag /lidar/points /imu/data \
 source /opt/ros/jazzy/setup.bash
 export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
 python3 -m unittest discover -s tests -t . -v
-sha256sum -c SHA256SUMS
 ```
 
 The delivery's build/tests and remaining hardware acceptance work are documented

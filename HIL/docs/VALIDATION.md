@@ -34,7 +34,7 @@ contacts before counting a mission as successful.
 
 Only application source, required build/runtime dependencies, sensor/mission
 configuration templates, build/launch/check scripts, focused tests, licenses,
-the checksum manifest and operating instructions belong in this folder.
+and operating instructions belong in this folder.
 
 Compiler dependency checks identified three unused upstream headers:
 Exp_mat.h, matplotlibcpp.h and wrapped_cv_mat.hpp. These are omitted along
