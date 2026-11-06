@@ -28,7 +28,7 @@ establish localization accuracy or physical mission completion.
 ## Validate your platform
 
 Complete the calibration, sensor checks and powered acceptance tests described
-in [the hardware checklist](HARDWARE_CHECKLIST.md) and [the root README](../README.md).
+in [the hardware checklist](HARDWARE_CHECKLIST.md) and [the package README](README.md).
 Start with a short controlled route before attempting the full mission.
 
 Save the following information for each trial:

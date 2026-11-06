@@ -1,5 +1,5 @@
 # Copy this file to robot.site.yaml. Change only the platform-specific values
-# identified in TEAM_CONFIGURATION.md; keep the documented internal interfaces.
+# identified in docs/TEAM_CONFIGURATION.md; keep the documented internal interfaces.
 base_frame: base_link
 map_frame: map
 odom_frame: odom_lidar
