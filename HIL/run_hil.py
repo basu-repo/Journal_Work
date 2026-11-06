@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Start a planner and fail-closed hardware watchdog; no simulator dependencies."""
 import argparse
+import json
 import os
 import signal
 import subprocess
@@ -11,6 +12,23 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent
+VERIFIED_ROOT = ROOT/'verified_stack'
+
+
+def verified_planner_command(robot, output):
+    """Launch the navigator and options used by the verified Bayland run."""
+    return [
+        sys.executable, str(VERIFIED_ROOT/'localization_experiment/navigator.py'),
+        '--adaptive-horizon', '--straight-only', '--boundary-follow',
+        '--robot', str(output/'robot.yaml'),
+        '--mission', str(output/'mission.yaml'), '--output', str(output),
+        '--ros-args',
+        '-r', '/scan:='+robot['scan_topic'],
+        '-r', '/map:='+robot['map_topic'],
+        '-r', '/cmd_vel:='+robot['planner_command_topic'],
+        '-r', '/navigation/enabled:=/hil/navigation_enabled',
+        '-p', 'use_sim_time:='+str(robot.get('use_sim_time', False)).lower(),
+    ]
 
 
 def main():
@@ -21,10 +39,12 @@ def main():
     p.add_argument('--skip-preflight', action='store_true')
     args = p.parse_args()
     robot = yaml.safe_load(args.robot.read_text())
+    if args.arm and not robot.get('verified_profile_armed', False):
+        p.error('--arm is locked for the verified profile; complete simulation and disarmed validation, then set verified_profile_armed: true in robot.site.yaml')
     env = os.environ.copy()
-    env['PYTHONPATH'] = str(ROOT/'src') + os.pathsep + env.get('PYTHONPATH', '')
+    env['PYTHONPATH'] = (str(VERIFIED_ROOT) + os.pathsep + str(ROOT/'src') +
+                         os.pathsep + env.get('PYTHONPATH', ''))
     output = ROOT/'runs'/datetime.now().strftime('%Y%m%d_%H%M%S')
-    planner_name = 'dijkstra_lattice'
     prep = [sys.executable, str(ROOT/'scripts/prepare_run.py'),
             '--robot', str(args.robot), '--mission', str(args.mission), '--output', str(output)]
     subprocess.run(prep, check=True, env=env)
@@ -39,13 +59,18 @@ def main():
     watchdog += clock_args
     health = [sys.executable, str(ROOT/'localization/health.py'),
               '--robot', str(output/'robot.yaml')] + clock_args
-    planner = [sys.executable, '-m', planner_name+'.node', '--robot', str(output/'robot.yaml'),
-               '--mission', str(output/'mission.yaml'), '--output', str(output), '--ros-args',
-               '-r', '/scan:='+robot['scan_topic'],
-               '-r', '/map:='+robot['map_topic'],
-               '-r', '/cmd_vel:='+robot['planner_command_topic'],
-               '-r', '/navigation/enabled:=/hil/navigation_enabled',
-               '-p', 'use_sim_time:='+str(robot.get('use_sim_time', False)).lower()]
+    planner = verified_planner_command(robot, output)
+    (output/'navigation_profile.json').write_text(json.dumps({
+        'profile': 'verified_bayland',
+        'planner': 'dijkstra_state_lattice',
+        'global_guidance': True,
+        'boundary_follow': True,
+        'straight_only': True,
+        'adaptive_horizon': True,
+        'base_horizon_m': 5.0,
+        'persistent_exploration_memory': False,
+        'armed': bool(args.arm),
+    }, indent=2))
     processes = [subprocess.Popen(health, env=env, start_new_session=True),
                  subprocess.Popen(watchdog, env=env, start_new_session=True),
                  subprocess.Popen(planner, env=env, start_new_session=True)]

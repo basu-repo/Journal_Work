@@ -216,6 +216,23 @@ python3 run_hil.py \
   --mission config/mission.site.yaml
 ```
 
+This launches the frozen navigation profile used by the verified Bayland run:
+Dijkstra state lattice with global exploration guidance, boundary following,
+straight-motion preference, and an adaptive horizon with a 5 m base. The
+planner configuration remains identical for the armed controlled test.
+When using the included localization launcher, FAST-LIO2 supplies local pose
+and the verified configuration keeps SLAM Toolbox scan matching and loop
+closing disabled.
+
+After the same site configuration passes Gazebo and disarmed HIL validation,
+set the following in `robot.site.yaml`:
+
+```yaml
+verified_profile_armed: true
+```
+
+The `--arm` option is rejected while this value is false.
+
 Disarmed mode must publish zero hardware velocity. Verify sensor timing, point
 fields, TF ownership, localization, map alignment and the planned path before
 using `--arm`. Keep the physical E-stop available during every initial powered
