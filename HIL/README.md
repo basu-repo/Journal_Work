@@ -56,6 +56,11 @@ local build, install and log directories, which are excluded from Git.
 
 ## Configure your robot and mission
 
+Before editing the YAML files, complete the concise
+[team configuration worksheet](TEAM_CONFIGURATION.md). It identifies the
+platform-specific values that must change and the internal package values that
+should remain unchanged.
+
 ```bash
 cp config/robot.example.yaml config/robot.site.yaml
 cp config/mission.example.yaml config/mission.site.yaml
