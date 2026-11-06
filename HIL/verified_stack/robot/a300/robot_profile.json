@@ -1,0 +1,53 @@
+{
+  "id": "a300",
+  "description": "Current simulation Husky, identified by owner as A300.",
+  "mode": "sdf",
+  "model": "simulation/models/husky/model.sdf",
+  "entity": "husky",
+  "base_frame": "base_link",
+  "sensors": {
+    "lidar": "front_laser",
+    "imu": "imu_sensor",
+    "depth": "camera_front",
+    "gnss": "navsat_sensor"
+  },
+  "limits": {
+    "linear_mps": 0.8,
+    "angular_radps": 0.8
+  },
+  "geometry": {
+    "safety_radius_m": 0.68,
+    "rotation_radius_m": 0.83,
+    "self_filter_xy_m": [
+      -0.75,
+      0.8,
+      0.5
+    ],
+    "static_padding_m": 0.12
+  },
+  "capabilities": {
+    "wheel_odom": true,
+    "imu": true,
+    "gnss": true,
+    "lidar": true,
+    "depth": true
+  },
+  "ground_models": [
+    "baylands",
+    "ground_plane",
+    "floor"
+  ],
+  "command_timeout_sim_s": 0.6,
+  "perception": {
+    "lidar_stride": 20,
+    "minimum_height_m": 0.22,
+    "maximum_height_m": 2.3,
+    "maximum_lidar_range_m": 10.0,
+    "depth_stride": 12,
+    "maximum_depth_range_m": 8.0
+  },
+  "resource_paths": [
+    "simulation/models"
+  ],
+  "gnss_fallback_variance_m2": 0.04
+}

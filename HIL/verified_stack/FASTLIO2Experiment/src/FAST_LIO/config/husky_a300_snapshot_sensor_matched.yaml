@@ -1,0 +1,49 @@
+/**:
+  ros__parameters:
+    feature_extract_enable: false
+    point_filter_num: 4
+    max_iteration: 4
+    filter_size_surf: 0.35
+    filter_size_map: 0.35
+    cube_side_length: 300.0
+    runtime_pos_log_enable: false
+    map_file_path: ""
+
+    common:
+      lid_topic: "/lidar/points"
+      imu_topic: "/imu/data"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      lidar_type: 5
+      scan_line: 64
+      scan_rate: 10
+      timestamp_unit: 0
+      blind: 0.8
+
+    mapping:
+      # Gazebo A300 model.sdf measurement-noise variances:
+      # gyro stddev 0.009 rad/s; acceleration stddev 0.021 m/s^2.
+      acc_cov: 0.000441
+      gyr_cov: 0.000081
+      # Dynamic-bias random-walk variances from the same sensor model.
+      b_acc_cov: 0.000000140625
+      b_gyr_cov: 0.0000000004
+      fov_degree: 360.0
+      det_range: 120.0
+      extrinsic_est_en: false
+      extrinsic_T: [0.374, 0.0, 0.435]
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+
+    publish:
+      path_en: true
+      scan_publish_en: true
+      dense_publish_en: false
+      scan_bodyframe_pub_en: true
+
+    pcd_save:
+      pcd_save_en: false
+      interval: -1

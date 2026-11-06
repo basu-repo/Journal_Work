@@ -7,3 +7,26 @@ config/*.site.yaml
 *.db
 *.db3
 *.mcap
+
+# Generated ROS 2 and simulation products inside the verified stack
+**/build/
+**/install/
+**/log/
+verified_stack/bag/
+verified_stack/bags/
+verified_stack/result/
+verified_stack/results/
+*.log
+
+# Local editor, backup, and temporary files
+.vscode/
+.idea/
+.DS_Store
+*~
+*.swp
+*.swo
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
