@@ -1,5 +1,5 @@
-# Copy this file and replace every value with the receiving robot's measured
-# configuration. The planner has no dependency on a particular terrain.
+# Copy this file to robot.site.yaml. Change only the platform-specific values
+# identified in TEAM_CONFIGURATION.md; keep the documented internal interfaces.
 base_frame: base_link
 map_frame: map
 odom_frame: odom_lidar
