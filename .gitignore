@@ -1,0 +1,5 @@
+# Only the shareable HIL package belongs in the repository.
+# HIL has its own .gitignore for build products, bags, logs, and results.
+/*
+!/.gitignore
+!/HIL/

@@ -1,0 +1,230 @@
+# A300 Gazebo -> ROS 2 bridge configuration (ros_gz_bridge YAML list).
+# Source of topic names: robot/a300/model.sdf.
+# Use ONE robot bridge at a time; both files intentionally expose common ROS topics.
+# From the Work directory, after starting the corresponding simulation:
+#   source /opt/ros/jazzy/setup.bash
+#   ros2 run ros_gz_bridge parameter_bridge --ros-args -p config_file:="$PWD/robot/a300/bridge.yaml"
+#
+# RGB images are not bridged. Frames are preserved, not renamed or transformed.
+# These entries connect existing sensors; they do not create a complete Nav2 TF tree,
+# SLAM, localization, filtered scans, or navigation. Do not fuse unavailable IMU orientation.
+# Contact messages are event-driven: no chassis contact can mean no chassis messages.
+# Simulation truth is deliberately excluded from navigation inputs.
+# Topics are independent of the selected terrain/world name.
+# Format reference: https://github.com/gazebosim/ros_gz/blob/jazzy/ros_gz_bridge/README.md
+
+# Simulation time; set use_sim_time:=true on ROS navigation nodes.
+- ros_topic_name: /clock
+  gz_topic_name: /clock
+  ros_type_name: rosgraph_msgs/msg/Clock
+  gz_type_name: gz.msgs.Clock
+  direction: GZ_TO_ROS
+  qos_profile: CLOCK
+  lazy: false
+
+# ROS autonomous command input. Manual driving still uses native Gazebo Teleop.
+# Twist (not TwistStamped); configure the eventual Nav2 output accordingly.
+- ros_topic_name: /cmd_vel
+  gz_topic_name: /cmd_vel
+  ros_type_name: geometry_msgs/msg/Twist
+  gz_type_name: gz.msgs.Twist
+  direction: ROS_TO_GZ
+  lazy: false
+
+# Wheel odometry (not Gazebo ground truth).
+- ros_topic_name: /odom
+  gz_topic_name: /wheel/odom
+  ros_type_name: nav_msgs/msg/Odometry
+  gz_type_name: gz.msgs.Odometry
+  direction: GZ_TO_ROS
+  lazy: false
+
+# Wheel odom -> base_link TF only. Disable this entry if an EKF owns that transform.
+# Sensor/link TF and map -> odom must be supplied by the later robot/localization setup.
+- ros_topic_name: /tf
+  gz_topic_name: /wheel/tf
+  ros_type_name: tf2_msgs/msg/TFMessage
+  gz_type_name: gz.msgs.Pose_V
+  direction: GZ_TO_ROS
+  lazy: false
+
+# 3D LiDAR cloud. Build a ground-filtered 2D /scan later if the selected Nav2 setup needs it.
+# Raw Gazebo multi-row scan is /husky/lidar3d; it is not assumed to be a ready 2D navigation scan.
+- ros_topic_name: /lidar/points
+  gz_topic_name: /husky/lidar3d/points
+  ros_type_name: sensor_msgs/msg/PointCloud2
+  gz_type_name: gz.msgs.PointCloudPacked
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: false
+
+# imu_sensor; 50 Hz as configured in model.sdf.
+- ros_topic_name: /imu/data
+  gz_topic_name: /model/husky/imu
+  ros_type_name: sensor_msgs/msg/Imu
+  gz_type_name: gz.msgs.IMU
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: false
+
+# navsat_sensor; 10 Hz as configured in model.sdf.
+- ros_topic_name: /gps/fix
+  gz_topic_name: /husky/gps
+  ros_type_name: sensor_msgs/msg/NavSatFix
+  gz_type_name: gz.msgs.NavSat
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: false
+
+# camera_front depth only; lazy streams activate when a ROS subscriber connects.
+- ros_topic_name: /depth/front/image
+  gz_topic_name: /a300/sensors/camera_front/depth_image
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Depth camera calibration.
+- ros_topic_name: /depth/front/camera_info
+  gz_topic_name: /a300/sensors/camera_front/camera_info
+  ros_type_name: sensor_msgs/msg/CameraInfo
+  gz_type_name: gz.msgs.CameraInfo
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Optional depth cloud for obstacle layers; lazy to avoid unused conversion work.
+- ros_topic_name: /depth/front/points
+  gz_topic_name: /a300/sensors/camera_front/points
+  ros_type_name: sensor_msgs/msg/PointCloud2
+  gz_type_name: gz.msgs.PointCloudPacked
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# camera_down depth only; lazy streams activate when a ROS subscriber connects.
+- ros_topic_name: /depth/down/image
+  gz_topic_name: /a300/sensors/camera_down/depth_image
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Depth camera calibration.
+- ros_topic_name: /depth/down/camera_info
+  gz_topic_name: /a300/sensors/camera_down/camera_info
+  ros_type_name: sensor_msgs/msg/CameraInfo
+  gz_type_name: gz.msgs.CameraInfo
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Optional depth cloud for obstacle layers; lazy to avoid unused conversion work.
+- ros_topic_name: /depth/down/points
+  gz_topic_name: /a300/sensors/camera_down/points
+  ros_type_name: sensor_msgs/msg/PointCloud2
+  gz_type_name: gz.msgs.PointCloudPacked
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# camera_pan_tilt depth only; lazy streams activate when a ROS subscriber connects.
+- ros_topic_name: /depth/pan_tilt/image
+  gz_topic_name: /a300/sensors/camera_pan_tilt/depth_image
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Depth camera calibration.
+- ros_topic_name: /depth/pan_tilt/camera_info
+  gz_topic_name: /a300/sensors/camera_pan_tilt/camera_info
+  ros_type_name: sensor_msgs/msg/CameraInfo
+  gz_type_name: gz.msgs.CameraInfo
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Optional depth cloud for obstacle layers; lazy to avoid unused conversion work.
+- ros_topic_name: /depth/pan_tilt/points
+  gz_topic_name: /a300/sensors/camera_pan_tilt/points
+  ros_type_name: sensor_msgs/msg/PointCloud2
+  gz_type_name: gz.msgs.PointCloudPacked
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Pan/tilt joint positions only (the existing publisher does not include wheel joints).
+- ros_topic_name: /joint_states
+  gz_topic_name: /a300/joint_states
+  ros_type_name: sensor_msgs/msg/JointState
+  gz_type_name: gz.msgs.Model
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: false
+
+# Simulation evaluation only. Ground/wheel contact is not automatically an obstacle collision.
+- ros_topic_name: /simulation/contacts/base_link
+  gz_topic_name: /husky/contacts/base_link
+  ros_type_name: ros_gz_interfaces/msg/Contacts
+  gz_type_name: gz.msgs.Contacts
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Simulation evaluation only. Ground/wheel contact is not automatically an obstacle collision.
+- ros_topic_name: /simulation/contacts/front_left_wheel_link
+  gz_topic_name: /husky/contacts/front_left_wheel_link
+  ros_type_name: ros_gz_interfaces/msg/Contacts
+  gz_type_name: gz.msgs.Contacts
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Simulation evaluation only. Ground/wheel contact is not automatically an obstacle collision.
+- ros_topic_name: /simulation/contacts/front_right_wheel_link
+  gz_topic_name: /husky/contacts/front_right_wheel_link
+  ros_type_name: ros_gz_interfaces/msg/Contacts
+  gz_type_name: gz.msgs.Contacts
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Simulation evaluation only. Ground/wheel contact is not automatically an obstacle collision.
+- ros_topic_name: /simulation/contacts/rear_left_wheel_link
+  gz_topic_name: /husky/contacts/rear_left_wheel_link
+  ros_type_name: ros_gz_interfaces/msg/Contacts
+  gz_type_name: gz.msgs.Contacts
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Simulation evaluation only. Ground/wheel contact is not automatically an obstacle collision.
+- ros_topic_name: /simulation/contacts/rear_right_wheel_link
+  gz_topic_name: /husky/contacts/rear_right_wheel_link
+  ros_type_name: ros_gz_interfaces/msg/Contacts
+  gz_type_name: gz.msgs.Contacts
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Simulation evaluation only. Ground/wheel contact is not automatically an obstacle collision.
+- ros_topic_name: /simulation/contacts/pan_gimbal_link
+  gz_topic_name: /husky/contacts/pan_gimbal_link
+  ros_type_name: ros_gz_interfaces/msg/Contacts
+  gz_type_name: gz.msgs.Contacts
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true
+
+# Simulation evaluation only. Ground/wheel contact is not automatically an obstacle collision.
+- ros_topic_name: /simulation/contacts/tilt_gimbal_link
+  gz_topic_name: /husky/contacts/tilt_gimbal_link
+  ros_type_name: ros_gz_interfaces/msg/Contacts
+  gz_type_name: gz.msgs.Contacts
+  direction: GZ_TO_ROS
+  qos_profile: SENSOR_DATA
+  lazy: true

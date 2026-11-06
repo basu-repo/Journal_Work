@@ -1,0 +1,52 @@
+# TEMPLATE ONLY. Measure LiDAR-to-IMU extrinsics and verify point time units.
+/**:
+  ros__parameters:
+    common:
+      imu_topic: /imu/data
+      lid_topic: /lidar/points
+      time_offset_lidar_to_imu: 0.0
+      time_sync_en: false
+    cube_side_length: 300.0
+    feature_extract_enable: false
+    filter_size_map: 0.35
+    filter_size_surf: 0.35
+    map_file_path: ''
+    mapping:
+      acc_cov: 0.1
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+      det_range: 120.0
+      extrinsic_R:
+      - 1.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      extrinsic_T:
+      - 0.0
+      - 0.0
+      - 0.0
+      extrinsic_est_en: false
+      fov_degree: 360.0
+      gyr_cov: 0.1
+    max_iteration: 4
+    pcd_save:
+      interval: -1
+      pcd_save_en: false
+    point_filter_num: 4
+    preprocess:
+      blind: 0.8
+      lidar_type: 2
+      scan_line: 16
+      scan_rate: 10
+      timestamp_unit: 0
+    publish:
+      dense_publish_en: false
+      path_en: true
+      scan_bodyframe_pub_en: true
+      scan_publish_en: true
+    runtime_pos_log_enable: false

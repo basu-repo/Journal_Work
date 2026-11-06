@@ -1,0 +1,15 @@
+enabled: false
+phase: observation
+observation_period_s: 2.0
+max_pose_age_s: 1.0
+max_map_age_s: 60.0
+max_cells: 1000000
+free_threshold: 25
+min_frontier_cells: 5
+frontier_view_distance_m: 2.0
+max_frontiers: 40
+junction_probe_m: 2.5
+junction_angle_step_degrees: 5.0
+junction_min_sector_degrees: 15.0
+# Clearance comes from the existing robot + mission configuration, not here.
+# Target utility, dead-end classification and movement are NOT enabled in A.

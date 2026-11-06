@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+FASTLIO2Experiment/build/
+FASTLIO2Experiment/install/
+FASTLIO2Experiment/log/
+bag/
+result/
+localization_experiment/result/
+hardware/*.site.yaml
+*.db
+*.db3
+*.mcap
