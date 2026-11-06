@@ -24,7 +24,7 @@ IMU-to-base extrinsics, verify point timestamp formats and units, and use a
 common clock.
 
 Use your existing terrain assets and hardware drivers; these are not included
-in this package. For Baylands, follow [Baylands HIL](docs/BAYLANDS_HIL.md).
+in this package. For Baylands, follow [Baylands HIL](BAYLANDS_HIL.md).
 
 ## Install and build
 
@@ -74,7 +74,7 @@ values, then set `calibration_confirmed: true`. Check field names, field types
 and point timestamp units against your sensor driver.
 
 For Gazebo snapshot clouds, use `config/fastlio.simulation.yaml` and follow the
-clock and calibration settings in [Baylands HIL](docs/BAYLANDS_HIL.md).
+clock and calibration settings in [Baylands HIL](BAYLANDS_HIL.md).
 Select snapshot type 5 only for the validated instantaneous cloud model.
 
 Assign each TF transform to one publisher. When using the included localization
@@ -106,7 +106,7 @@ python3 run_hil.py --robot config/robot.site.yaml --mission config/mission.site.
 ```
 
 Verify the planned route and confirm that the watchdog outputs zero velocity.
-Complete the [hardware checks](docs/HARDWARE_CHECKLIST.md), then start a
+Complete the [hardware checks](HARDWARE_CHECKLIST.md), then start a
 controlled motion test with the physical E-stop available:
 
 ```bash
@@ -125,7 +125,7 @@ View the planned route on `/dijkstra_lattice/path`.
 Replace `targets` in the mission YAML with surveyed XY coordinates in the
 current `map` frame. Give each waypoint and the final goal a name.
 
-Follow [Mission coordinates and starting-frame setup](docs/MISSION_COORDINATES.md)
+Follow [Mission coordinates and starting-frame setup](MISSION_COORDINATES.md)
 to establish the start reference and convert local, Gazebo-world or geographic
 targets into the active SLAM map frame.
 
@@ -150,7 +150,7 @@ export PYTHONPATH="$PWD/src:$PWD:${PYTHONPATH:-}"
 python3 -m unittest discover -s tests -t . -v
 ```
 
-Follow [verification and acceptance](docs/VALIDATION.md) to assess the
+Follow [verification and acceptance](VALIDATION.md) to assess the
 installation and record your test results. Complete physical calibration and
 powered testing on your platform before reporting hardware performance.
 Start with conservative speed limits; the example limits are not the
@@ -166,7 +166,7 @@ Baylands benchmark settings.
 - `config/`: robot, mission and hardware/simulation sensor templates.
 - `tests/`: planner, motion, clearance, pose conversion and command gate tests.
 - `docs/`: Baylands integration, hardware checks and validation instructions.
-- `THIRD_PARTY_NOTICES.md`: source provenance and modifications.
+- `docs/THIRD_PARTY_NOTICES.md`: source provenance and modifications.
 
 The navigation code requests scan transforms at the exact timestamp. When that
 transform is unavailable, it accepts the latest TF only if the scan-to-TF lag
