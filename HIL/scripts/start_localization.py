@@ -37,7 +37,10 @@ def commands(robot, profile, output):
         map_update_interval=1., minimum_travel_distance=.2, minimum_travel_heading=.15,
         minimum_time_interval=.15, max_laser_range=float(cfg['range_max']),
         transform_timeout=.5, enable_interactive_mode=False,
-        use_scan_matching=True, do_loop_closing=True)
+        # Frozen verified Bayland configuration. FAST-LIO2 owns local pose;
+        # SLAM Toolbox accumulates occupancy without changing map->odom from
+        # scan matching or loop closure during this test sequence.
+        use_scan_matching=False, do_loop_closing=False)
     slam_path = output/'slam.yaml'
     slam_path.write_text(yaml.safe_dump(slam))
     scan = dict(use_sim_time=clock, target_frame=robot['base_frame'], transform_tolerance=.5,

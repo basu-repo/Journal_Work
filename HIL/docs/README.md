@@ -105,6 +105,15 @@ python3 scripts/preflight.py --robot config/robot.site.yaml
 python3 run_hil.py --robot config/robot.site.yaml --mission config/mission.site.yaml
 ```
 
+`run_hil.py` uses the frozen verified Bayland navigation profile in both test
+modes: Dijkstra state-lattice execution, global exploration guidance, boundary
+following, straight-motion preference, and the adaptive horizon with a 5 m
+base. Disarmed and armed runs use the same planner configuration. The only
+difference is whether the watchdog may forward a validated velocity command.
+The included localization launcher also preserves the verified SLAM policy:
+FAST-LIO2 supplies local pose while SLAM Toolbox scan matching and loop closing
+remain disabled.
+
 Verify the planned route and confirm that the watchdog outputs zero velocity.
 Complete the [hardware checks](HARDWARE_CHECKLIST.md), then start a
 controlled motion test with the physical E-stop available:
@@ -112,6 +121,11 @@ controlled motion test with the physical E-stop available:
 ```bash
 python3 run_hil.py --robot config/robot.site.yaml --mission config/mission.site.yaml --arm
 ```
+
+The armed command remains locked while `verified_profile_armed` is false. Set
+it to true in `robot.site.yaml` only after the same profile has passed Gazebo
+and disarmed HIL validation with the site topics, frames, calibration,
+footprint, limits and mission.
 
 To use your existing localization stack, first confirm that it publishes the
 configured localization, map, scan and TF inputs. Then run `run_hil.py` without
