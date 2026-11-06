@@ -168,6 +168,10 @@ These are not latitude/longitude coordinates. Geographic coordinates must be
 converted into the initialized local map frame using a surveyed reference.
 Start with a short, clear route for the first powered test.
 
+Follow [Mission coordinates and starting-frame setup](docs/MISSION_COORDINATES.md)
+for the complete procedure covering local measurements, Gazebo world
+coordinates, latitude/longitude conversion, initial heading and validation.
+
 ## 6. TF ownership
 
 The supplied stack publishes:

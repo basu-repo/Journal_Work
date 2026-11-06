@@ -125,6 +125,10 @@ View the planned route on `/dijkstra_lattice/path`.
 Replace `targets` in the mission YAML with surveyed XY coordinates in the
 current `map` frame. Give each waypoint and the final goal a name.
 
+Follow [Mission coordinates and starting-frame setup](docs/MISSION_COORDINATES.md)
+to establish the start reference and convert local, Gazebo-world or geographic
+targets into the active SLAM map frame.
+
 Establish the relationship between Gazebo world coordinates and the SLAM map
 frame before importing world coordinates. Do not assume that world XY equals
 map XY. Keep live ground truth out of the GNSS-denied localization pipeline.
