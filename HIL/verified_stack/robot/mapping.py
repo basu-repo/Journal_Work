@@ -60,11 +60,11 @@ def build_view(output,capabilities,settings,model,robot_view=False):
     displays=[
         display('Map','Accumulated sensor map',Topic=topic('/map',True),Alpha=.65,
                 **{'Color Scheme':'map','Draw Behind':True,'Use Timestamp':False}),
-        display('PointCloud2','Live 3D LiDAR height colors',Topic=topic('/lidar/points',reliability='Best Effort'),
+        display('PointCloud2','FAST-LIO2 registered cloud',Topic=topic('/fastlio/cloud_registered_odom',reliability='Best Effort'),
                 Alpha=1.,Style='Points',
                 **{'Color Transformer':'AxisColor','Axis':'Z','Use rainbow':True,
                    'Autocompute Value Bounds':{'Value':True,'Min Value':-1.,'Max Value':2.},
-                   'Position Transformer':'XYZ','Size (Pixels)':1,'Decay Time':0,'Queue Size':5}),
+                   'Position Transformer':'XYZ','Size (Pixels)':1,'Decay Time':.2,'Queue Size':20}),
         display('Path','Global planned route',Topic=topic(global_topic,not nav2),Color='40; 145; 255',Alpha=1.,
             **{'Line Style':'Billboards','Line Width':.07,'Buffer Length':1,'Pose Style':'None','Offset':{'X':0,'Y':0,'Z':.08}}),
         display('Axes','Robot pose (red axis is forward)',**{'Reference Frame':capabilities['base_frame'],'Length':.8,'Radius':.06}),
@@ -83,7 +83,9 @@ def build_view(output,capabilities,settings,model,robot_view=False):
           'Focal Point':{'X':0.,'Y':0.,'Z':0.}}
     config={'Panels':[{'Class':'rviz_common/Displays','Name':'Displays'}, {'Class':'rviz_common/Views','Name':'Views'}],
         'Visualization Manager':{'Class':'','Name':'root','Enabled':True,'Value':True,'Displays':displays,
-            'Global Options':{'Fixed Frame':'map','Background Color':'48; 48; 48','Frame Rate':15},
+            # Use the local odometry frame for this view so delayed map->odom
+            # updates do not make the live cloud fail its exact-time TF lookup.
+            'Global Options':{'Fixed Frame':settings.get('odom_frame','map'),'Background Color':'48; 48; 48','Frame Rate':15},
             'Tools':[{'Class':'rviz_default_plugins/MoveCamera'},{'Class':'rviz_default_plugins/Select'},{'Class':'rviz_default_plugins/Measure'}],
             'Views':{'Current':view}},
         'Window Geometry':{'Width':1100,'Height':800,'Hide Left Dock':False,'Hide Right Dock':True}}

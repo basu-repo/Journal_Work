@@ -27,17 +27,27 @@ class Adapter(Node):
         self.stream=(output/'fastlio_navigation.jsonl').open('a')
         self.perf=(output/'fastlio_performance.jsonl').open('a')
         self.pub=self.create_publisher(Odometry,'/fastlio/odometry_base',qos_profile_sensor_data)
+        self.cloud_pub=self.create_publisher(
+            PointCloud2,'/fastlio/cloud_registered_odom',qos_profile_sensor_data)
         self.tf=TransformBroadcaster(self)
         self.create_subscription(Clock,'/clock',self.on_clock,qos_profile_sensor_data)
         self.create_subscription(PointCloud2,'/lidar/points',self.on_lidar,qos_profile_sensor_data)
         self.create_subscription(LaserScan,'/scan',lambda _:setattr(self,'scan_count',self.scan_count+1),qos_profile_sensor_data)
         self.create_subscription(OccupancyGrid,'/map',lambda _:setattr(self,'map_count',self.map_count+1),10)
         self.create_subscription(Odometry,'/fastlio/odometry',self.on_odom,qos_profile_sensor_data)
+        self.create_subscription(
+            PointCloud2,'/fastlio/cloud_registered',self.on_registered_cloud,qos_profile_sensor_data)
         self.create_timer(1.0,self.record_performance)
 
     def on_clock(self,msg):self.sim_time=msg.clock.sec+msg.clock.nanosec*1e-9
     def on_lidar(self,msg):
         self.lidar_count+=1;self.last_lidar_stamp=msg.header.stamp.sec+msg.header.stamp.nanosec*1e-9
+    def on_registered_cloud(self,msg):
+        # FAST-LIO2's camera_init is the same local world frame exposed by
+        # this adapter as odom_lidar. Relabel the already world-aligned cloud
+        # for RViz only; no point coordinates or operational inputs change.
+        msg.header.frame_id='odom_lidar'
+        self.cloud_pub.publish(msg)
     def on_odom(self,msg):
         self.odom_count+=1;stamp=msg.header.stamp.sec+msg.header.stamp.nanosec*1e-9
         self.last_odom_stamp=stamp

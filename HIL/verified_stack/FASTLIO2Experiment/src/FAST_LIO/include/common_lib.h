@@ -261,10 +261,18 @@ double get_time_sec(const builtin_interfaces::msg::Time &time)
 
 rclcpp::Time get_ros_time(double timestamp)
 {
-    int32_t sec = std::floor(timestamp);
-    auto nanosec_d = (timestamp - std::floor(timestamp)) * 1e9;
-    uint32_t nanosec = nanosec_d;
-    return rclcpp::Time(sec, nanosec);
+    int64_t sec = static_cast<int64_t>(std::floor(timestamp));
+    int64_t nanosec = std::llround((timestamp - static_cast<double>(sec)) * 1e9);
+
+    // Floating-point scan times such as 39.3 can be represented just below
+    // the decimal value. Truncation produced 39.299999999 and made exact-time
+    // TF lookups reject the corresponding cloud stamped 39.300000000.
+    if (nanosec >= 1000000000LL)
+    {
+        ++sec;
+        nanosec -= 1000000000LL;
+    }
+    return rclcpp::Time(static_cast<int32_t>(sec), static_cast<uint32_t>(nanosec));
 }
 
 #endif
