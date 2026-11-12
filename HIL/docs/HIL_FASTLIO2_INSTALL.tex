@@ -1,0 +1,63 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[margin=20mm]{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+\pagestyle{plain}
+\definecolor{codebg}{RGB}{246,248,250}
+\lstset{basicstyle=\ttfamily\small,backgroundcolor=\color{codebg},
+  frame=single,framerule=0.3pt,breaklines=true,columns=fullflexible,
+  xleftmargin=4pt,xrightmargin=4pt,aboveskip=7pt,belowskip=7pt}
+\begin{document}
+\begin{center}
+{\Large\bfseries Required One-Time FAST-LIO2 Installation}\par
+\vspace{3pt}
+{\small Husky GNSS-Denied Navigation --- Team Instructions}
+\end{center}
+
+\section*{Before running the Bayland command}
+FAST-LIO2 build products are excluded from Git. Cloning or pulling the
+repository supplies the source but does not create the executable. Perform this
+step on every new checkout or machine, from a fresh terminal.
+
+\begin{lstlisting}
+cd <Journal_Work>/HIL/verified_stack
+source /opt/ros/jazzy/setup.bash
+bash hardware/build_fastlio.sh
+source FASTLIO2Experiment/install/setup.bash
+\end{lstlisting}
+
+The build must finish without error. Do not start the experiment when
+\path{FASTLIO2Experiment/install/setup.bash} is missing.
+
+\section*{Mandatory verification}
+\begin{lstlisting}
+test -x FASTLIO2Experiment/install/fast_lio/lib/fast_lio/fastlio_mapping \
+  && echo "Correct FAST-LIO2 build exists"
+
+ros2 pkg prefix fast_lio
+\end{lstlisting}
+
+The package prefix must begin with:
+
+\begin{lstlisting}
+<Journal_Work>/HIL/verified_stack/FASTLIO2Experiment/install
+\end{lstlisting}
+
+If it resolves to \texttt{HIL/verified\_stack/install}, another workspace, or
+an older installation, stop. Open a fresh terminal, source ROS Jazzy, rebuild
+with the command above, and repeat the verification. The same navigation
+command does not reproduce the same experiment when ROS selects a different
+FAST-LIO2 executable.
+
+\section*{Then run the verified profile}
+Continue with Section 1 only after the local executable and package prefix have
+both been verified. Keep the complete result folder from every run. In
+\texttt{fast\_lio2.log}, the launched executable must also be under
+\texttt{HIL/verified\_stack/FASTLIO2Experiment/install/fast\_lio/}.
+
+\vfill
+\noindent\textbf{Fail-safe rule:} a missing local FAST-LIO2 build is a setup
+failure, not permission to fall back to an executable from another ROS overlay.
+\end{document}
