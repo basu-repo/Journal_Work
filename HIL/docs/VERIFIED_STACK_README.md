@@ -6,11 +6,25 @@ files under `/home/basudeo/Documents/Work` are not modified by this copy.
 
 ## Build FAST-LIO2
 
+Run these commands from `HIL/verified_stack` in a fresh terminal. The build
+output is intentionally local to this verified stack and is not stored in Git.
+
 ```bash
 source /opt/ros/jazzy/setup.bash
 bash hardware/build_fastlio.sh
 source FASTLIO2Experiment/install/setup.bash
+
+test -x FASTLIO2Experiment/install/fast_lio/lib/fast_lio/fastlio_mapping \
+  && echo "Correct FAST-LIO2 build exists"
+
+ros2 pkg prefix fast_lio
 ```
+
+The final command must print a path beginning with the current
+`HIL/verified_stack/FASTLIO2Experiment/install` directory. Stop if the build
+script fails, `setup.bash` is missing, or `ros2 pkg prefix fast_lio` resolves to
+another workspace. Do not continue using a package inherited from a previously
+sourced ROS overlay.
 
 ## Check the packaged Bayland configuration
 
