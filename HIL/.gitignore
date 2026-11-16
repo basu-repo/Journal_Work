@@ -8,6 +8,9 @@ config/*.site.yaml
 *.db3
 *.mcap
 
+# Generated from docs/HIL_MAIN_INSTRUCTIONS.md for local distribution.
+docs/HIL_MAIN_INSTRUCTIONS.pdf
+
 # Generated ROS 2 and simulation products inside the verified stack
 **/build/
 **/install/

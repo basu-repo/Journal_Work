@@ -1,0 +1,53 @@
+# Interface profile for the packaged Gazebo-sensor HIL experiment.
+# The physical A200 is a stationary compute host. Geometry and sensor values
+# below describe the simulated vehicle and must not be reused for physical motion.
+base_frame: base_link
+map_frame: map
+odom_frame: odom_lidar
+odom_topic: /fastlio/odometry_base
+localization_mode: slam
+use_sim_time: true
+verified_profile_armed: false
+
+localization:
+  calibration_confirmed: true
+  fastlio_config: fastlio.simulation.yaml
+  pointcloud_topic: /lidar/points
+  imu_topic: /imu/data
+  raw_odom_topic: /fastlio/odometry
+  source_frame: camera_init
+  source_body_frame: body
+  # In the packaged Gazebo model the IMU/body origin coincides with base_link.
+  body_to_base_translation: [0.0, 0.0, 0.0]
+  body_to_base_quaternion: [0.0, 0.0, 0.0, 1.0]
+  min_height: 0.15
+  max_height: 1.8
+  range_min: 0.8
+  range_max: 30.0
+  scan_angle_increment: 0.00872664626
+  scan_period: 0.1
+  sensor_timeout: 1.0
+  map_timeout: 10.0
+  tf_timeout: 0.5
+  stable_seconds: 2.0
+
+# Conservative polygon enclosing the packaged simulated A300 collision geometry.
+footprint:
+  - [-0.63, -0.48]
+  - [0.63, -0.48]
+  - [0.63, 0.48]
+  - [-0.63, 0.48]
+footprint_padding: 0.05
+
+max_linear_speed: 0.30
+max_angular_speed: 0.30
+linear_acceleration: 0.25
+angular_acceleration: 0.40
+reverse_speed: 0.10
+command_timeout: 0.60
+
+scan_topic: /scan
+map_topic: /map
+planner_command_topic: /hil/planner_cmd_vel
+# Deliberately isolated from the physical Clearpath drive topic.
+hardware_command_topic: /sim/husky/cmd_vel

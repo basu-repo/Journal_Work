@@ -1,5 +1,11 @@
 # FAST-LIO2 + SLAM Toolbox + DijkstraLattice HIL package
 
+For the split-computer Gazebo-sensor HIL procedure, including the isolated
+Gazebo command bridge and the supplied `robot.hil.yaml` / `mission.hil.yaml`
+profiles, use [Husky HIL Main Instructions](HIL_MAIN_INSTRUCTIONS.md). The
+physical Husky remains stationary in that stage and commands are permitted only
+to `/sim/husky/cmd_vel`.
+
 Use this package to run the Husky navigation experiment on your robot or through
 a Gazebo interface with ROS 2 Jazzy. The navigation model is
 **Dijkstra + State Lattice (DijkstraLattice)**. The package includes FAST-LIO2,

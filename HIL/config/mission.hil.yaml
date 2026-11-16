@@ -1,0 +1,5 @@
+# Short local-map mission for initial disarmed and Gazebo-actuated HIL checks.
+# Replace only after confirming map-frame alignment in RViz.
+targets:
+  - {name: waypoint_1, x: 2.0, y: 0.0}
+  - {name: goal, x: 4.0, y: 0.0}

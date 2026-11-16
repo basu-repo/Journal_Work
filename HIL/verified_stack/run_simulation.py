@@ -883,6 +883,8 @@ def main():
     parser.add_argument('--gui-config',type=Path)
     parser.add_argument('--paused',action='store_true')
     parser.add_argument('--headless',action='store_true')
+    parser.add_argument('--hil-interface',action='store_true',
+        help='Simulation-only HIL interface: bridge sensors/clock, publish static robot TF, and accept only /sim/husky/cmd_vel')
     parser.add_argument('--costmap-view',action=argparse.BooleanOptionalAction,default=None,help='Open RTAB-Map viewer for RTAB-Map runs or RViz for slam_toolbox; default on for graphical runs')
     parser.add_argument('--record-bag',action=argparse.BooleanOptionalAction,default=True,help='Record selected ROS topics for autonomous runs (default: on)')
     parser.add_argument('--min-free-gb',type=float,default=20.,help='Stop autonomous recording before free disk space falls below this GiB (default: 20)')
@@ -903,6 +905,7 @@ def main():
         print('Maps:',', '.join(maps),'\nRobots:',', '.join(robots),'\nModels: manual, nav2, astar, Dijkstra, DstarLite, Dstar, DstarLattice, DstarLiteLattice, DijkstraLattice');return 0
     ensure_environment()
     if args.model=='manual' and args.costmap_view:parser.error('Costmap view requires an autonomous model')
+    if args.hil_interface and args.model!='manual':parser.error('--hil-interface requires --model manual; localization and navigation run on the HIL computer')
     if args.model=='manual' and args.record_bag:args.record_bag=False
     if args.gnss_mode in ('periodic','target') and (args.localization!='gnss' or
             args.model not in ('astar','Dijkstra','DstarLite','Dstar','DstarLattice','DstarLiteLattice','DijkstraLattice')):
@@ -946,6 +949,43 @@ def main():
         command=['gz','sim',str(world)]
         command+=['-s','--headless-rendering'] if args.headless else ['--gui-config',str(gui)]
         if not args.paused:command.append('-r')
+        if args.hil_interface:
+            from robot.adapter import describe
+            robot_dir=ROOT/'robot'/args.robot
+            describe(robot_dir,args.robot,directory/'robot.urdf')
+            bridge=yaml.safe_load((robot_dir/'bridge.yaml').read_text())
+            isolated=[]
+            for item in bridge:
+                item=dict(item)
+                if item['ros_topic_name'] in ('/tf','/gps/fix'):
+                    continue
+                if item['direction']=='ROS_TO_GZ' and item['ros_topic_name']=='/cmd_vel':
+                    item['ros_topic_name']='/sim/husky/cmd_vel'
+                isolated.append(item)
+            (directory/'bridge.hil.yaml').write_text(yaml.safe_dump(isolated,sort_keys=False))
+            state={'robot_state_publisher':{'ros__parameters':{
+                'use_sim_time':True,'robot_description':(directory/'robot.urdf').read_text()}}}
+            (directory/'state_publisher.hil.yaml').write_text(yaml.safe_dump(state))
+            hil_env=env.copy()
+            if args.ros_domain is not None:hil_env['ROS_DOMAIN_ID']=str(args.ros_domain)
+            children=[
+                subprocess.Popen(command,env=hil_env,start_new_session=True),
+                subprocess.Popen(['ros2','run','ros_gz_bridge','parameter_bridge','--ros-args',
+                                  '-p','config_file:='+str(directory/'bridge.hil.yaml')],
+                                 env=hil_env,start_new_session=True),
+                subprocess.Popen(['ros2','run','robot_state_publisher','robot_state_publisher',
+                                  '--ros-args','--params-file',str(directory/'state_publisher.hil.yaml')],
+                                 env=hil_env,start_new_session=True),
+            ]
+            print('HIL Gazebo interface active: sensors/clock -> ROS; commands accepted only on /sim/husky/cmd_vel.',flush=True)
+            old=signal.signal(signal.SIGTERM,lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+            try:
+                while all(p.poll() is None for p in children):time.sleep(.2)
+                return next((p.returncode for p in children if p.returncode not in (None,0)),0)
+            except (KeyboardInterrupt,subprocess.TimeoutExpired):return 130
+            finally:
+                signal.signal(signal.SIGTERM,old)
+                stop_process_groups([('hil_component_'+str(i),p) for i,p in enumerate(children)])
         print('Simulation only; no autonomous navigation or recording.',flush=True)
         child=subprocess.Popen(command,env=env,start_new_session=True)
         old=signal.signal(signal.SIGTERM,lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
