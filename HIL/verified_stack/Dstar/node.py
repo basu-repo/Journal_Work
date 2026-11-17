@@ -36,7 +36,7 @@ class Navigator(DirectionalCorridors,Node):
         robot['radius']=max(math.hypot(*p) for p in robot['footprint'])+robot['footprint_padding']
         robot['settings']=cfg;self.supervisor=Supervisor(robot)
         self.tf=Buffer();self.listener=TransformListener(self.tf,self)
-        self.scan=None;self.map=None;self.map_time=0.;self.odom_time=0.;self.localization_time=0.;self.localization_ok=False
+        self.scan=None;self.scan_received_time=0.;self.map=None;self.map_time=0.;self.odom_time=0.;self.localization_time=0.;self.localization_ok=False
         self.last_scan_tf_fallback_log=-float('inf')
         self.clock_started=None;self.begin=time.monotonic();self.started=False;self.exit_code=None
         self.sigma=0.;self.ekf_sigma=0.;self.previous=(0.,0.);self.enable_state=None;self.index=0;self.completed=[];self.grid=None;self.path=[];self.route_reason='waiting';self.planner=self.make_planner();self.search_pending_count=0
@@ -139,7 +139,8 @@ class Navigator(DirectionalCorridors,Node):
             self.ekf_sigma=math.sqrt(max(0.,float(np.linalg.eigvalsh([[c[0],c[1]],[c[6],c[7]]]).max())))
             self.sigma=self.ekf_sigma
     def on_scan(self,msg):
-        if len(msg.ranges) and any((math.isfinite(x) and msg.range_min<=x<=msg.range_max) or x==float('inf') for x in msg.ranges):self.scan=msg
+        if len(msg.ranges) and any((math.isfinite(x) and msg.range_min<=x<=msg.range_max) or x==float('inf') for x in msg.ranges):
+            self.scan=msg;self.scan_received_time=time.monotonic()
     def on_map(self,msg):
         if msg.header.frame_id=='map' and msg.info.resolution>0 and len(msg.data)>0 and len(msg.data)==msg.info.width*msg.info.height:
             self.map=msg;self.map_time=self.now()
@@ -321,10 +322,18 @@ class Navigator(DirectionalCorridors,Node):
             self.finish(3,'waypoint_gnss_timeout');return
         missing=self.missing_inputs()
         if missing:
+            diagnostic={}
+            if 'scan' in missing:
+                diagnostic['scan_received']=self.scan is not None
+                diagnostic['scan_stamp']=(None if self.scan is None else stamp(self.scan))
+                diagnostic['scan_sim_age']=(None if self.scan is None else now-stamp(self.scan))
+                diagnostic['scan_wall_age']=(None if not self.scan_received_time else
+                                             time.monotonic()-self.scan_received_time)
+                diagnostic['sensor_timeout']=self.cfg['sensor_timeout']
             if missing!=self.last_missing_inputs or wall-self.last_readiness_log>=5.0:
-                self.log('waiting_for_inputs',missing=missing)
+                self.log('waiting_for_inputs',missing=missing,**diagnostic)
                 self.last_missing_inputs=missing;self.last_readiness_log=wall
-            self.emit(reason='missing_inputs',missing=missing)
+            self.emit(reason='missing_inputs',missing=missing,**diagnostic)
             if not self.started and wall-self.begin>self.cfg['readiness_timeout']:self.finish(2,'readiness_timeout')
             elif (self.started and now-self.target_started>self.cfg['waypoint_timeout'] and
                   not (self.waypoint_verifier and self.waypoint_verifier.pending)):

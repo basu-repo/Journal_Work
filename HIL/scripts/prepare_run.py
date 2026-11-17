@@ -18,6 +18,18 @@ def settings(path):
     return data
 
 
+def run_configuration(robot, mission_file):
+    """Merge the frozen planner profile with the selected robot interfaces."""
+    mission = settings(ROOT/'src/dijkstra_lattice/settings.yaml')
+    mission.update(mission_file)
+    mission.update(localization_mode='slam', gnss_mode='denied',
+                   waypoint_gnss_verification=False,
+                   odom_topic=robot['odom_topic'],
+                   odom_frame=robot['odom_frame'],
+                   base_frame=robot['base_frame'])
+    return mission
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--robot', type=Path, default=ROOT/'config/robot.example.yaml')
@@ -31,11 +43,7 @@ def main():
     if robot['planner_command_topic'] == robot['hardware_command_topic']:
         raise ValueError('Planner and hardware command topics must be distinct')
     planner_name = 'dijkstra_lattice'
-    mission = settings(ROOT/'src'/planner_name/'settings.yaml')
-    mission.update(yaml.safe_load(args.mission.read_text()))
-    mission.update(localization_mode='slam', gnss_mode='denied', waypoint_gnss_verification=False,
-                   odom_topic=robot['odom_topic'],
-                   base_frame=robot['base_frame'])
+    mission = run_configuration(robot, yaml.safe_load(args.mission.read_text()))
     targets = mission.get('targets', [])
     if not targets or any(not all(k in t for k in ('name', 'x', 'y')) for t in targets):
         raise ValueError('Mission requires targets with name, x and y in the map frame')
