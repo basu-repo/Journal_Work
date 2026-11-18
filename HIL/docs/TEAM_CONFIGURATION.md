@@ -92,8 +92,10 @@ reverse_speed: 0.10
 hardware_command_topic: <TEAM_CMD_VEL_TOPIC>
 ```
 
-The hardware command topic must accept `geometry_msgs/msg/Twist`. Add a bridge
-if the Clearpath interface requires `TwistStamped` or another message type.
+The watchdog publishes `geometry_msgs/msg/Twist` by default. If the Clearpath
+interface requires `geometry_msgs/msg/TwistStamped`, start `run_hil.py` with
+`--twist-stamped-output`. Other command message types still require a separate,
+explicitly validated bridge.
 
 ### Values to leave unchanged for the supplied stack
 

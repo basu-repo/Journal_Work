@@ -149,6 +149,23 @@ python3 run_hil.py \
 
 Arming permits commands only to `/sim/husky/cmd_vel` as configured in `robot.hil.yaml`.
 
+The packaged Gazebo bridge expects `geometry_msgs/Twist`, so do not add a
+command-type flag for the simulation HIL run. If a physical Clearpath command
+topic requires `geometry_msgs/TwistStamped`, use the separate site profile and
+start navigation with:
+
+```bash
+python3 run_hil.py \
+  --robot config/robot.site.yaml \
+  --mission config/mission.site.yaml \
+  --twist-stamped-output \
+  --arm
+```
+
+This changes only the watchdog's output message type. The planner continues to
+publish its isolated internal `Twist` command, and the watchdog still applies
+the same readiness, freshness and velocity limits before forwarding it.
+
 # Why FAST-LIO2 still needs LiDAR-to-IMU extrinsics
 
 The transforms are related, but they serve different software interfaces:

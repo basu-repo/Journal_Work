@@ -36,11 +36,13 @@ def main():
     p.add_argument('--robot', type=Path, default=ROOT/'config/robot.example.yaml')
     p.add_argument('--mission', type=Path, required=True)
     p.add_argument('--arm', action='store_true', help='Allow watchdog to forward bounded velocity commands')
+    p.add_argument('--twist-stamped-output', action='store_true',
+                   help='Publish TwistStamped on the configured hardware command topic')
     p.add_argument('--skip-preflight', action='store_true')
     args = p.parse_args()
     robot = yaml.safe_load(args.robot.read_text())
     if args.arm and not robot.get('verified_profile_armed', False):
-        p.error('--arm is locked for the verified profile; complete simulation and disarmed validation, then set verified_profile_armed: true in robot.site.yaml')
+        p.error('--arm is locked for the verified profile; complete simulation and disarmed validation, then set verified_profile_armed: true in '+str(args.robot))
     env = os.environ.copy()
     env['PYTHONPATH'] = (str(VERIFIED_ROOT) + os.pathsep + str(ROOT/'src') +
                          os.pathsep + env.get('PYTHONPATH', ''))
@@ -55,6 +57,7 @@ def main():
     watchdog = [sys.executable, str(ROOT/'scripts/hardware_watchdog.py'),
                 '--config', str(output/'robot.yaml')]
     if args.arm: watchdog.append('--arm')
+    if args.twist_stamped_output: watchdog.append('--twist-stamped-output')
     clock_args = ['--ros-args', '-p', 'use_sim_time:='+str(robot.get('use_sim_time', False)).lower()]
     watchdog += clock_args
     health = [sys.executable, str(ROOT/'localization/health.py'),
@@ -70,6 +73,7 @@ def main():
         'base_horizon_m': 5.0,
         'persistent_exploration_memory': False,
         'armed': bool(args.arm),
+        'hardware_command_type': ('TwistStamped' if args.twist_stamped_output else 'Twist'),
     }, indent=2))
     processes = [subprocess.Popen(health, env=env, start_new_session=True),
                  subprocess.Popen(watchdog, env=env, start_new_session=True),

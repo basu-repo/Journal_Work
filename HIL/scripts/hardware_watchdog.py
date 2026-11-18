@@ -7,7 +7,7 @@ from pathlib import Path
 
 import rclpy
 import yaml
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 from nav_msgs.msg import Odometry
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
@@ -18,10 +18,11 @@ from std_msgs.msg import Bool
 
 
 class Watchdog(Node):
-    def __init__(self, cfg, armed):
+    def __init__(self, cfg, armed, twist_stamped_output=False):
         super().__init__('hil_command_watchdog')
         self.cfg = cfg
         self.armed = armed
+        self.twist_stamped_output = twist_stamped_output
         self.enabled = False
         self.ready = False
         self.last_ready = 0.0
@@ -33,7 +34,8 @@ class Watchdog(Node):
         self.create_subscription(Twist, cfg['planner_command_topic'], self.on_command, 10)
         self.create_subscription(LaserScan, cfg['scan_topic'], self.on_scan, qos_profile_sensor_data)
         self.create_subscription(Odometry, cfg['odom_topic'], self.on_odom, qos_profile_sensor_data)
-        self.publisher = self.create_publisher(Twist, cfg['hardware_command_topic'], 10)
+        output_type = TwistStamped if twist_stamped_output else Twist
+        self.publisher = self.create_publisher(output_type, cfg['hardware_command_topic'], 10)
         self.create_timer(0.05, self.tick, clock=Clock(clock_type=ClockType.STEADY_TIME))
 
     def on_enable(self, msg): self.enabled = bool(msg.data)
@@ -43,7 +45,17 @@ class Watchdog(Node):
         if msg.ranges: self.last_scan = time.monotonic()
     def on_odom(self, _msg): self.last_odom = time.monotonic()
 
-    def stop(self): self.publisher.publish(Twist())
+    def publish(self, command):
+        if self.twist_stamped_output:
+            stamped = TwistStamped()
+            stamped.header.stamp = self.get_clock().now().to_msg()
+            stamped.header.frame_id = self.cfg['base_frame']
+            stamped.twist = command
+            self.publisher.publish(stamped)
+        else:
+            self.publisher.publish(command)
+
+    def stop(self): self.publish(Twist())
 
     def tick(self):
         now = time.monotonic()
@@ -57,18 +69,22 @@ class Watchdog(Node):
                                min(self.cfg['max_linear_speed'], self.command.linear.x))
             out.angular.z = max(-self.cfg['max_angular_speed'],
                                 min(self.cfg['max_angular_speed'], self.command.angular.z))
-        self.publisher.publish(out)
+        self.publish(out)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--arm', action='store_true')
+    parser.add_argument('--twist-stamped-output', action='store_true',
+                        help='Publish geometry_msgs/TwistStamped to the hardware command topic')
     args, ros = parser.parse_known_args()
     cfg = yaml.safe_load(args.config.read_text())
     rclpy.init(args=ros, signal_handler_options=SignalHandlerOptions.NO)
-    node = Watchdog(cfg, args.arm)
-    print('HIL watchdog:', 'ARMED' if args.arm else 'DISARMED (zero velocity only)', flush=True)
+    node = Watchdog(cfg, args.arm, args.twist_stamped_output)
+    command_type = 'TwistStamped' if args.twist_stamped_output else 'Twist'
+    print('HIL watchdog:', 'ARMED' if args.arm else 'DISARMED (zero velocity only)',
+          '| output:', command_type, flush=True)
     try: rclpy.spin(node)
     except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException): pass
     finally:

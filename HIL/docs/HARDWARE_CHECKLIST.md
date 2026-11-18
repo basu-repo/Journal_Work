@@ -2,9 +2,10 @@
 
 Complete these checks before enabling motion:
 
-- Verify that your base driver accepts `geometry_msgs/msg/Twist` on
-  `hardware_command_topic`. Provide a bridge if it requires
-  `TwistStamped` or another message type.
+- Verify the message type accepted on `hardware_command_topic`. The default is
+  `geometry_msgs/msg/Twist`; use `--twist-stamped-output` when the Clearpath
+  interface requires `geometry_msgs/msg/TwistStamped`. Other message types
+  require a separate, explicitly validated bridge.
 - Confirm that only the watchdog publishes to the enabled base command channel.
 - Test that command loss stops the platform through the driver timeout.
 - Test the physical E-stop independently of the navigation software.
