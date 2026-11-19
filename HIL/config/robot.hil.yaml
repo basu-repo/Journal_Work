@@ -7,6 +7,9 @@ odom_frame: odom_lidar
 odom_topic: /fastlio/odometry_base
 localization_mode: slam
 use_sim_time: true
+tf_source_topic: /tf
+tf_topic: /tf
+tf_static_topic: /tf_static
 verified_profile_armed: false
 
 localization:

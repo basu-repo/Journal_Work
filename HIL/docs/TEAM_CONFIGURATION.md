@@ -64,6 +64,9 @@ sensor and PointCloud2 fields match the Ouster handler.
 ```yaml
 base_frame: base_link                 # Confirm the real robot frame.
 use_sim_time: false                   # true for Gazebo; false for physical sensors.
+tf_source_topic: /a201_0000/tf       # Clearpath TF, including wheel/EKF odometry.
+tf_topic: /hil/tf                    # Filtered TF used by the supplied HIL stack.
+tf_static_topic: /a201_0000/tf_static
 
 localization:
   calibration_confirmed: false        # Set true only after checking all extrinsics.
@@ -122,6 +125,19 @@ These are internal interfaces created or consumed by the HIL package.
 The launcher takes the LiDAR and IMU topics from `robot.site.yaml` and applies
 them to FAST-LIO. The duplicated topic values in `fastlio.site.yaml` are not the
 authoritative topic settings.
+
+The robot profile also controls TF transport. When `tf_source_topic` differs
+from `tf_topic`, `start_localization.py` launches a filter that copies the
+robot's dynamic transforms but removes every external transform whose child is
+`base_link`. This prevents Clearpath `odom -> base_link` from competing with
+the adapter's `odom_lidar -> base_link`. Static mounting transforms remain on
+`tf_static_topic` and wheel-odometry messages remain available.
+
+`preflight.py`, the FAST-LIO
+adapter, obstacle/scan conversion, SLAM Toolbox, localization health and the
+navigator all remap `/tf` and `/tf_static` to `tf_topic` and
+`tf_static_topic`. Frame IDs such as `base_link` remain separate settings; a
+topic namespace does not automatically change a frame ID.
 
 For a physical Velodyne, confirm these values:
 

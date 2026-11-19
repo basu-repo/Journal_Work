@@ -15,6 +15,10 @@ Complete these checks before enabling motion:
 - Match the LiDAR fields and timestamp units to the selected FAST-LIO handler.
 - Check that the LiDAR-to-IMU and body-to-base calibration agrees with the
   URDF sensor mounting transforms.
+- Set `tf_source_topic` to the robot's dynamic TF topic (for example
+  `/a201_0000/tf`), `tf_topic` to an isolated HIL topic such as `/hil/tf`, and
+  `tf_static_topic` to the robot's static TF topic. Confirm that the frame IDs
+  match `base_frame` and the sensor message frame IDs.
 - Assign one publisher to map-to-odom and one to odom-to-base.
 - Confirm that GNSS and Gazebo ground truth are excluded from localization
   and planning inputs.

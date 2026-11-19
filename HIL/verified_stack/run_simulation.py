@@ -70,6 +70,17 @@ import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parent
+WORK_ROBOT_ROOT = ROOT.parents[1] / 'robot'
+
+
+def robot_directory(name):
+    """Resolve packaged robots first, then robots shared by the Work checkout."""
+    packaged = ROOT / 'robot' / name
+    shared = WORK_ROBOT_ROOT / name
+    for candidate in (packaged, shared):
+        if (candidate / 'model.sdf').is_file() and (candidate / 'bridge.yaml').is_file():
+            return candidate
+    raise ValueError(f'Robot assets for {name!r} are incomplete')
 
 
 def pose(element):
@@ -155,7 +166,7 @@ def ensure_sensor_systems(world, model):
 
 def prepare(args, directory):
     world_path = ROOT / 'terrain' / args.map / 'world.sdf'
-    robot_dir = ROOT / 'robot' / args.robot
+    robot_dir = robot_directory(args.robot)
     tree = ET.parse(world_path)
     world = tree.getroot().find('world')
     if getattr(args, 'model', 'manual') != 'manual' and args.localization == 'slam':
@@ -359,7 +370,7 @@ def navigation_files(args, world_path, directory):
     effective_gnss_mode=args.gnss_mode if args.localization=='gnss' else 'denied'
     settings['gnss_mode']=effective_gnss_mode
     if args.startup_delay is not None:settings['startup_delay']=args.startup_delay
-    robot_dir=ROOT/'robot'/args.robot
+    robot_dir=robot_directory(args.robot)
     cfg=describe(robot_dir,args.robot,directory/'robot.urdf')
     cfg['odom_frame']=settings['odom_frame']
     # Navigation must consume the fused map-frame estimate whenever GNSS
@@ -853,7 +864,8 @@ def ensure_environment():
 
 def main():
     maps=sorted(p.parent.name for p in (ROOT/'terrain').glob('*/world.sdf'))
-    robots=sorted(p.parent.name for p in (ROOT/'robot').glob('*/model.sdf'))
+    robot_roots = (ROOT/'robot', WORK_ROBOT_ROOT)
+    robots=sorted({p.parent.name for root in robot_roots for p in root.glob('*/model.sdf')})
     parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--map',choices=maps,default='bayland')
     parser.add_argument('--robot',choices=robots,default='a300')
@@ -951,7 +963,7 @@ def main():
         if not args.paused:command.append('-r')
         if args.hil_interface:
             from robot.adapter import describe
-            robot_dir=ROOT/'robot'/args.robot
+            robot_dir=robot_directory(args.robot)
             describe(robot_dir,args.robot,directory/'robot.urdf')
             bridge=yaml.safe_load((robot_dir/'bridge.yaml').read_text())
             isolated=[]

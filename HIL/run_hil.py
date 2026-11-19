@@ -27,6 +27,8 @@ def verified_planner_command(robot, output):
         '-r', '/map:='+robot['map_topic'],
         '-r', '/cmd_vel:='+robot['planner_command_topic'],
         '-r', '/navigation/enabled:=/hil/navigation_enabled',
+        '-r', '/tf:='+robot.get('tf_topic', '/tf'),
+        '-r', '/tf_static:='+robot.get('tf_static_topic', '/tf_static'),
         '-p', 'use_sim_time:='+str(robot.get('use_sim_time', False)).lower(),
     ]
 
@@ -51,14 +53,21 @@ def main():
             '--robot', str(args.robot), '--mission', str(args.mission), '--output', str(output)]
     subprocess.run(prep, check=True, env=env)
     if not args.skip_preflight:
-        code = subprocess.run([sys.executable, str(ROOT/'scripts/preflight.py'),
-                               '--robot', str(args.robot)], env=env).returncode
+        code = subprocess.run([
+            sys.executable, str(ROOT/'scripts/preflight.py'), '--robot', str(args.robot),
+            '--ros-args', '-r', '/tf:='+robot.get('tf_topic', '/tf'),
+            '-r', '/tf_static:='+robot.get('tf_static_topic', '/tf_static')],
+            env=env).returncode
         if code: return code
     watchdog = [sys.executable, str(ROOT/'scripts/hardware_watchdog.py'),
                 '--config', str(output/'robot.yaml')]
     if args.arm: watchdog.append('--arm')
     if args.twist_stamped_output: watchdog.append('--twist-stamped-output')
-    clock_args = ['--ros-args', '-p', 'use_sim_time:='+str(robot.get('use_sim_time', False)).lower()]
+    clock_args = [
+        '--ros-args',
+        '-p', 'use_sim_time:='+str(robot.get('use_sim_time', False)).lower(),
+        '-r', '/tf:='+robot.get('tf_topic', '/tf'),
+        '-r', '/tf_static:='+robot.get('tf_static_topic', '/tf_static')]
     watchdog += clock_args
     health = [sys.executable, str(ROOT/'localization/health.py'),
               '--robot', str(output/'robot.yaml')] + clock_args

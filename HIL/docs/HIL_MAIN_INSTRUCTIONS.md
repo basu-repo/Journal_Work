@@ -19,7 +19,24 @@ This guide separates three different modes. Do not mix their configuration files
 
 For HIL, keep the physical E-stop engaged or disable the physical motor driver. Never connect `/sim/husky/cmd_vel` to the Clearpath physical drive interface.
 
-The current physical computer may be installed on a Husky A200 while the packaged Gazebo asset is named `a300`. In this HIL stage, `verified_stack/robot/a300` describes only the simulated vehicle receiving commands. It is not the hardware configuration of the stationary A200. Physical A200 topics, calibration, footprint and drive limits belong in a separate site profile when physical sensors or motion are introduced.
+The repository supports both the packaged A300 Gazebo asset and the shared
+`robot/a200` Gazebo asset. Use `config/robot.a200.sim.yaml` only with the A200
+simulation; its geometry must not be reused as physical calibration. Physical
+A200 topics, measured calibration, footprint and drive limits belong in a
+separate site profile when physical sensors or motion are introduced.
+
+For the A200 simulation interface, use:
+
+```bash
+python3 verified_stack/run_simulation.py \
+  --map bayland --robot a200 --model manual \
+  --hil-interface --ros-domain 222 --no-record-bag
+```
+
+Start localization with `config/robot.a200.sim.yaml`. Perform a disarmed run
+first. For an armed Gazebo run, copy that profile to a temporary/site file and
+set `verified_profile_armed: true`; never change the repository default merely
+to bypass the arming gate.
 
 # One-time FAST-LIO2 installation
 
@@ -189,6 +206,23 @@ cp config/mission.example.yaml config/mission.site.yaml
 
 Use the Ouster template instead only when its handler matches the actual PointCloud2 fields. Set `use_sim_time: false`, enter physical topics, measured LiDAR-to-IMU and body-to-base calibration, measured footprint and conservative motion limits. Set `calibration_confirmed: true` only after checking clocks, frame directions and extrinsics.
 
+Clearpath commonly publishes TF on namespaced transport topics and its EKF can
+already publish `odom -> base_link`. Keep that source separate from the TF topic
+used by this HIL stack:
+
+```yaml
+tf_source_topic: /a201_0000/tf
+tf_topic: /hil/tf
+tf_static_topic: /a201_0000/tf_static
+```
+
+`start_localization.py` then copies non-conflicting dynamic transforms to
+`/hil/tf` and removes external transforms whose child is `base_link`.
+FAST-LIO2 remains the sole dynamic parent owner for `base_link`; the Clearpath
+odometry topic remains available for diagnostics. This does not rename frame
+IDs. The IMU mounting frame must still be a rigid child of `base_link`, not a
+competing `world -> imu` branch.
+
 Run sensor-only preflight, localization, full preflight and disarmed navigation in that order. Use `--arm` only after the disarmed checks and independent E-stop test pass.
 
 # TF ownership
@@ -207,8 +241,8 @@ map -> odom_lidar -> base_link
 Verify one publisher per edge:
 
 ```bash
-ros2 topic info /tf --verbose
-ros2 topic info /tf_static --verbose
+ros2 topic info <TF_TOPIC_FROM_ROBOT_SITE_YAML> --verbose
+ros2 topic info <TF_STATIC_TOPIC_FROM_ROBOT_SITE_YAML> --verbose
 ros2 run tf2_tools view_frames
 ros2 run tf2_ros tf2_echo base_link <lidar-frame>
 ros2 run tf2_ros tf2_echo base_link <imu-frame>

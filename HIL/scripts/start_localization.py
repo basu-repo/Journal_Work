@@ -58,22 +58,37 @@ def commands(robot, profile, output):
     obstacle_path = output/'obstacles.yaml'
     obstacle_path.write_text(yaml.safe_dump({'obstacles_detection': {'ros__parameters': obstacles}}))
     obstacles_topic = '/hil/lidar_obstacles'
-    return [
+    tf_remaps = ['-r', '/tf:='+robot.get('tf_topic', '/tf'),
+                 '-r', '/tf_static:='+robot.get('tf_static_topic', '/tf_static')]
+    commands = []
+    tf_source = robot.get('tf_source_topic', robot.get('tf_topic', '/tf'))
+    tf_output = robot.get('tf_topic', '/tf')
+    if tf_source != tf_output:
+        commands.append([
+            sys.executable, str(ROOT/'localization/tf_owner_filter.py'),
+            '--source-topic', tf_source, '--output-topic', tf_output,
+            '--base-frame', robot['base_frame'],
+            '--ros-args', '-p', 'use_sim_time:='+str(clock).lower(),
+        ])
+    commands.extend([
         ['ros2', 'run', 'fast_lio', 'fastlio_mapping', '--ros-args', '--params-file', str(fast),
          '-r', '/Odometry:='+cfg['raw_odom_topic'], '-r', '/tf:=/fastlio/internal_tf',
          '-r', '/tf_static:=/fastlio/internal_tf_static', '-r', '/path:=/fastlio/path'],
         [sys.executable, str(ROOT/'localization/fastlio_adapter.py'), '--robot', str(profile),
-         '--ros-args', '-p', 'use_sim_time:='+str(clock).lower()],
+         '--ros-args', '-p', 'use_sim_time:='+str(clock).lower(), *tf_remaps],
         ['ros2', 'run', 'rtabmap_util', 'obstacles_detection', '--ros-args',
          '-r', '__node:=obstacles_detection', '--params-file', str(obstacle_path),
          '-r', 'cloud:='+cfg['pointcloud_topic'], '-r', 'obstacles:='+obstacles_topic,
-         '-r', 'ground:=/hil/lidar_ground'],
+         '-r', 'ground:=/hil/lidar_ground', *tf_remaps],
         ['ros2', 'run', 'pointcloud_to_laserscan', 'pointcloud_to_laserscan_node', '--ros-args',
          '-r', '__node:=pointcloud_to_laserscan', '--params-file', str(scan_path),
-         '-r', 'cloud_in:='+obstacles_topic, '-r', 'scan:='+robot['scan_topic']],
-        ['ros2', 'launch', 'slam_toolbox', 'online_async_launch.py',
-         'use_sim_time:='+str(clock).lower(), 'slam_params_file:='+str(slam_path)],
-    ]
+         '-r', 'cloud_in:='+obstacles_topic, '-r', 'scan:='+robot['scan_topic'], *tf_remaps],
+        ['ros2', 'launch', str(ROOT/'localization/slam_with_tf_remaps.launch.py'),
+         'use_sim_time:='+str(clock).lower(), 'slam_params_file:='+str(slam_path),
+         'tf_topic:='+robot.get('tf_topic', '/tf'),
+         'tf_static_topic:='+robot.get('tf_static_topic', '/tf_static')],
+    ])
+    return commands
 
 
 def main():
@@ -93,8 +108,11 @@ def main():
     (args.output/'commands.yaml').write_text(yaml.safe_dump(cmds))
     if args.prepare_only:
         return 0
-    check = subprocess.run([sys.executable, str(ROOT/'scripts/preflight.py'),
-                            '--robot', str(profile), '--sensors-only'])
+    check = subprocess.run([
+        sys.executable, str(ROOT/'scripts/preflight.py'), '--robot', str(profile),
+        '--sensors-only', '--ros-args',
+        '-r', '/tf:='+robot.get('tf_topic', '/tf'),
+        '-r', '/tf_static:='+robot.get('tf_static_topic', '/tf_static')])
     if check.returncode:
         return check.returncode
     processes = []

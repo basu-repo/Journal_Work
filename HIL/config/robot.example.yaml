@@ -7,6 +7,14 @@ odom_topic: /fastlio/odometry_base
 localization_mode: slam
 use_sim_time: false
 
+# TF transport topics. When the Clearpath stack already publishes a dynamic
+# odom -> base_link edge, keep that input separate and let the HIL filter remove
+# the competing parent before localization consumes the resulting TF topic.
+# If there is no competing publisher, tf_source_topic may equal tf_topic.
+tf_source_topic: /tf
+tf_topic: /tf
+tf_static_topic: /tf_static
+
 # Keep false through simulation and disarmed HIL validation. Set true only in
 # robot.site.yaml after the verified navigation profile passes those checks.
 verified_profile_armed: false

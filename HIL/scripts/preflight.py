@@ -20,10 +20,10 @@ def main():
     parser.add_argument('--robot', type=Path, required=True)
     parser.add_argument('--sensors-only', action='store_true')
     parser.add_argument('--seconds', type=float, default=8.)
-    args = parser.parse_args()
+    args, ros = parser.parse_known_args()
     robot = yaml.safe_load(args.robot.read_text())
     cfg = robot['localization']
-    rclpy.init()
+    rclpy.init(args=ros)
     node = Node('hil_preflight', parameter_overrides=[
         Parameter('use_sim_time', value=robot.get('use_sim_time', False))])
     buffer = Buffer()
