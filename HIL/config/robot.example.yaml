@@ -4,6 +4,8 @@ base_frame: base_link
 map_frame: map
 odom_frame: odom_lidar
 odom_topic: /fastlio/odometry_base
+# Raw wheel odometry is recorded for physical-run comparison with FAST-LIO2.
+wheel_odom_topic: /a201_0000/platform/odom
 localization_mode: slam
 use_sim_time: false
 
@@ -66,3 +68,6 @@ map_topic: /map
 # Planner output stays isolated until the watchdog approves it.
 planner_command_topic: /hil/planner_cmd_vel
 hardware_command_topic: /cmd_vel
+
+# Optional extra topics appended when run_hil.py uses --record-bag.
+additional_record_topics: []

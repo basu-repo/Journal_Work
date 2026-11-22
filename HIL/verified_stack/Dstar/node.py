@@ -1,5 +1,5 @@
 """Independent original D* navigation node using live map, LiDAR and pose."""
-import argparse,json,math,time,threading
+import argparse,json,math,os,time,threading
 from pathlib import Path
 import numpy as np
 import yaml
@@ -9,7 +9,7 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data,QoSProfile,DurabilityPolicy
 from rclpy.time import Time
-from geometry_msgs.msg import Twist,PoseStamped
+from geometry_msgs.msg import Twist,Pose as GeometryPose,PoseArray,PoseStamped
 from nav_msgs.msg import OccupancyGrid,Odometry,Path as PathMsg
 from sensor_msgs.msg import LaserScan,NavSatFix
 from std_msgs.msg import Bool
@@ -60,6 +60,12 @@ class Navigator(DirectionalCorridors,Node):
         self.gnss_gate=self.create_publisher(Bool,'/localization/gnss_request',qos) if self.gnss else None
         if self.target_gnss:self.gnss_gate.publish(Bool(data=False))
         self.path_pub=self.create_publisher(PathMsg,'/dstar/path',qos)
+        self.targets_pub=self.create_publisher(PoseArray,'/navigation/mission_targets',qos)
+        targets=PoseArray();targets.header.frame_id='map';targets.header.stamp=self.get_clock().now().to_msg()
+        for target in cfg['targets']:
+            pose=GeometryPose();pose.position.x=float(target['x']);pose.position.y=float(target['y']);pose.orientation.w=1.
+            targets.poses.append(pose)
+        self.targets_pub.publish(targets)
         self.create_subscription(LaserScan,'/scan',self.on_scan,qos_profile_sensor_data)
         self.create_subscription(OccupancyGrid,'/map',self.on_map,qos)
         # Availability is based on receipt of the live fused stream.  Its
@@ -147,7 +153,17 @@ class Navigator(DirectionalCorridors,Node):
     def log(self,event,**data):
         record=dict(event=event,wall_time=time.time(),sim_time=self.now(),**data)
         with (self.output/'events.jsonl').open('a') as f:f.write(json.dumps(record)+'\n')
-        print(json.dumps(record),flush=True)
+        # HIL may request concise operator output without removing diagnostic
+        # events from the saved JSONL log. Simulation output is unchanged.
+        concise=os.environ.get('HIL_CONCISE_CONSOLE')=='1'
+        console_events={
+            'waiting_for_readiness','waiting_for_inputs','ready','goal_sent',
+            'state','waypoint_reached','estimated_mission_completed',
+            'controller_exception','primitive_interrupted',
+            'lattice_search_pending','dstar_search_pending',
+        }
+        if not concise or event in console_events:
+            print(json.dumps(record),flush=True)
     def emit(self,v=0.,w=0.,enabled=False,reason=None,**diagnostic):
         stopped=(not enabled) or (abs(float(v))<1e-9 and abs(float(w))<1e-9)
         gate=(reason or ('disabled_unspecified' if not enabled else 'commanded_stop')) if stopped else None

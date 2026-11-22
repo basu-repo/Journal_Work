@@ -93,12 +93,19 @@ linear_acceleration: 0.25
 angular_acceleration: 0.40
 reverse_speed: 0.10
 hardware_command_topic: <TEAM_CMD_VEL_TOPIC>
+wheel_odom_topic: /a201_0000/platform/odom
+additional_record_topics: []
 ```
 
 The watchdog publishes `geometry_msgs/msg/Twist` by default. If the Clearpath
 interface requires `geometry_msgs/msg/TwistStamped`, start `run_hil.py` with
 `--twist-stamped-output`. Other command message types still require a separate,
 explicitly validated bridge.
+
+Add `--record-bag` to make `run_hil.py` start and stop a focused rosbag
+automatically. The bag is stored under the run's timestamped result directory.
+The standard list is assembled from this robot profile; use
+`additional_record_topics` only for site-specific additions.
 
 ### Values to leave unchanged for the supplied stack
 

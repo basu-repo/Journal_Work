@@ -138,7 +138,19 @@ configured localization, map, scan and TF inputs. Then run `run_hil.py` without
 starting `scripts/start_localization.py`. The runner monitors readiness in
 either setup. Use only one publisher for each TF transform.
 
-View the planned route on `/dijkstra_lattice/path`.
+View the map-aligned LiDAR scan, registered FAST-LIO2 3D cloud, FAST-LIO2 pose, mission targets,
+TF tree and planned route with
+the physical-HIL RViz profile. The remaps connect RViz to the filtered dynamic
+TF and Clearpath static-TF topics used by the A200 site profile:
+
+```bash
+rviz2 -d rviz/hil_physical.rviz --ros-args \
+  -r /tf:=/hil/tf \
+  -r /tf_static:=/a201_0000/tf_static \
+  -r /robot_description:=/a201_0000/robot_description
+```
+
+The planned route is published on `/dijkstra_lattice/path`.
 
 ## Set coordinates and record data
 
@@ -153,14 +165,26 @@ Establish the relationship between Gazebo world coordinates and the SLAM map
 frame before importing world coordinates. Do not assume that world XY equals
 map XY. Keep live ground truth out of the GNSS-denied localization pipeline.
 
-Record ROS data during each run. Replace the topic names below with those in
-your robot profile:
+Record ROS data automatically in the same timestamped result directory by
+adding `--record-bag` to `run_hil.py`:
 
 ```bash
-ros2 bag record -o runs/site_trial_bag /lidar/points /imu/data \
-  /fastlio/odometry /fastlio/odometry_base /map /scan /tf /tf_static \
-  /localization/ready /hil/planner_cmd_vel /cmd_vel /dijkstra_lattice/path
+python3 run_hil.py \
+  --robot config/robot.site.yaml \
+  --mission config/mission.site.yaml \
+  --twist-stamped-output \
+  --record-bag \
+  --arm
 ```
+
+The recorder derives the raw LiDAR, IMU, wheel odometry, TF, FAST-LIO2,
+scan, map, readiness, planned route, mission targets and command topics from
+the robot profile. It also records `/cloud_registered` and `/rosout`. The bag
+is saved as `runs/<timestamp>/rosbag`, its console output is saved in
+`runs/<timestamp>/bag_record.log`, and the exact topic list is written to
+`navigation_profile.json`. Set `wheel_odom_topic` and
+`additional_record_topics` in `robot.site.yaml` when the site needs topics not
+already represented by the standard profile fields.
 
 ## Verify the installation
 

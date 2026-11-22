@@ -10,7 +10,7 @@ from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from tf2_ros import TransformBroadcaster
+from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 try:
     from .geometry import base_pose
 except ImportError:
@@ -25,6 +25,17 @@ class Adapter(Node):
         self.last_stamp = -1
         self.pub = self.create_publisher(Odometry, robot['odom_topic'], qos_profile_sensor_data)
         self.tf = TransformBroadcaster(self)
+        self.static_tf = StaticTransformBroadcaster(self)
+        # FAST-LIO's camera_init and the exported odom_lidar frame are the
+        # same initialized local world. Publish that explicit alias so
+        # registered FAST-LIO clouds can be visualized in the HIL map tree.
+        if self.cfg['source_frame'] != robot['odom_frame']:
+            alias = TransformStamped()
+            alias.header.stamp = self.get_clock().now().to_msg()
+            alias.header.frame_id = robot['odom_frame']
+            alias.child_frame_id = self.cfg['source_frame']
+            alias.transform.rotation.w = 1.0
+            self.static_tf.sendTransform(alias)
         self.create_subscription(Odometry, self.cfg['raw_odom_topic'], self.on_odom,
                                  qos_profile_sensor_data)
 
